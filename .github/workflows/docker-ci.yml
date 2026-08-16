@@ -46,7 +46,16 @@ jobs:
           target="ghcr.io/${repository}/${{ matrix.service }}-${{ matrix.binary }}:sha-${GITHUB_SHA}"
           printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin >/dev/null
           docker tag "takein/${{ matrix.service }}-${{ matrix.binary }}:ci" "$target"
-          docker push "$target"
+          for attempt in 1 2 3 4; do
+            if docker push "$target"; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 4 ]; then
+              printf 'Failed to publish %s after %s attempts.\n' "$target" "$attempt" >&2
+              exit 1
+            fi
+            sleep $((attempt * 10))
+          done
 
   schema-migrator:
     runs-on: ubuntu-latest
@@ -75,7 +84,16 @@ jobs:
           target="ghcr.io/${repository}/schema-migrator:sha-${GITHUB_SHA}"
           printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin >/dev/null
           docker tag takein/schema-migrator:ci "$target"
-          docker push "$target"
+          for attempt in 1 2 3 4; do
+            if docker push "$target"; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 4 ]; then
+              printf 'Failed to publish %s after %s attempts.\n' "$target" "$attempt" >&2
+              exit 1
+            fi
+            sleep $((attempt * 10))
+          done
 
   runtime-smoke:
     needs: [images, schema-migrator]
