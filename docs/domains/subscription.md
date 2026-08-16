@@ -1,7 +1,7 @@
 # Subscription domain
 
 `Subscription` owns `subscription_plans` and `provider_subscriptions`, provider
-entitlement checks, owner-only plan purchase API, legacy subscription grant
+entitlement checks, owner-only plan purchase API, subscription grant
 command, and subscription payment lifecycle fields.
 
 Only the provider owner may purchase/manage its entitlement; a branch account

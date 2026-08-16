@@ -1,25 +1,19 @@
 .git
 .github
 node_modules
-vendor
 
 apps/provider-landing/node_modules
 apps/customer-web/node_modules
-backend/laravel-core/vendor
+apps/provider-console/node_modules
+apps/admin-web/node_modules
 
 apps/provider-landing/.next
 apps/customer-web/.next
+apps/provider-console/.next
+apps/admin-web/.next
 
 # Runtime configuration and secrets must be injected by the orchestrator,
 # never copied from the root or a nested application into an image layer.
 **/.env
 **/.env.*
-backend/laravel-core/storage/logs/*.log
-backend/laravel-core/storage/app/**
-backend/laravel-core/storage/framework/cache/data/*
-backend/laravel-core/storage/framework/sessions/*
-backend/laravel-core/storage/framework/testing/*
-backend/laravel-core/storage/framework/views/*
-storage/app/**
-
 .DS_Store

@@ -1,0 +1,82 @@
+http:
+  routers:
+    takein-payment-webhook:
+      rule: "Host(`hooks.takein.id`) && Path(`/api/midtrans/notification`)"
+      entryPoints: [websecure]
+      priority: 1000
+      tls: {}
+      service: takein-payment
+    takein-chat-realtime:
+      rule: "Host(`ws.takein.id`) && PathRegexp(`^/api/chat/threads/[^/]+/realtime$`)"
+      entryPoints: [websecure]
+      priority: 1000
+      tls: {}
+      service: takein-chat
+    takein-identity-api:
+      rule: "Host(`api.takein.id`) && (PathPrefix(`/api/auth`) || Path(`/api/provider/profile/password`))"
+      entryPoints: [websecure]
+      tls: {}
+      service: takein-identity
+    takein-payment-api:
+      rule: "Host(`api.takein.id`) && (PathRegexp(`^/api/customer/bookings/(?:[^/]+|code/[^/]+)/payment(?:/|$)`) || PathPrefix(`/api/provider/payments`))"
+      entryPoints: [websecure]
+      tls: {}
+      service: takein-payment
+    takein-billing-api:
+      rule: "Host(`api.takein.id`) && PathPrefix(`/api/provider/subscriptions`)"
+      entryPoints: [websecure]
+      tls: {}
+      service: takein-billing
+    takein-booking-api:
+      rule: "Host(`api.takein.id`) && (PathPrefix(`/api/customer/booking`) || Path(`/api/customer/bookings`) || PathRegexp(`^/api/customer/bookings/(?:[^/]+|code/[^/]+)(?:/(?:finalize|reschedule|cancel|hold/extend))?$`) || Path(`/api/customer/graphql`) || PathPrefix(`/api/provider/bookings`) || PathPrefix(`/api/admin/bookings`))"
+      entryPoints: [websecure]
+      tls: {}
+      service: takein-booking
+    takein-customer-api:
+      rule: "Host(`api.takein.id`) && (PathPrefix(`/api/customer/profile`) || PathPrefix(`/api/customer/activity`) || PathPrefix(`/api/customer/favorites`) || PathRegexp(`^/api/customer/bookings/code/[^/]+/review$`) || PathPrefix(`/api/provider/customers`) || PathPrefix(`/api/provider/reviews`) || PathPrefix(`/api/admin/customers`))"
+      entryPoints: [websecure]
+      tls: {}
+      service: takein-customer
+    takein-provider-api:
+      rule: "Host(`api.takein.id`) && (Path(`/api/provider/profile`) || PathPrefix(`/api/provider/profile/documents`) || PathPrefix(`/api/provider/staff`) || PathPrefix(`/api/provider/branches`) || PathPrefix(`/api/provider/roles-permissions`) || PathPrefix(`/api/admin/providers`))"
+      entryPoints: [websecure]
+      tls: {}
+      service: takein-provider
+    takein-catalog-api:
+      rule: "Host(`api.takein.id`) && (PathPrefix(`/api/provider/services`) || PathPrefix(`/api/admin/service-categories`) || PathPrefix(`/api/admin/services`) || PathPrefix(`/api/admin/coupons`) || PathRegexp(`^/api/(?:categories|locations|reviews|branches|staff|services|providers|coupons)(?:/|$)`))"
+      entryPoints: [websecure]
+      tls: {}
+      service: takein-catalog
+    takein-notification-api:
+      rule: "Host(`api.takein.id`) && PathPrefix(`/api/notifications`)"
+      entryPoints: [websecure]
+      tls: {}
+      service: takein-notification
+    takein-chat-api:
+      rule: "Host(`api.takein.id`) && PathPrefix(`/api/chat`)"
+      entryPoints: [websecure]
+      tls: {}
+      service: takein-chat
+    takein-media-api:
+      rule: "Host(`api.takein.id`) && PathPrefix(`/api/media`)"
+      entryPoints: [websecure]
+      tls: {}
+      service: takein-media
+    takein-audit-api:
+      rule: "Host(`api.takein.id`) && PathPrefix(`/api/admin/audit`)"
+      entryPoints: [websecure]
+      tls: {}
+      service: takein-audit
+
+  services:
+    takein-identity: {loadBalancer: {servers: [{url: "http://takein-identity-api:8080"}]}}
+    takein-customer: {loadBalancer: {servers: [{url: "http://takein-customer-api:8080"}]}}
+    takein-provider: {loadBalancer: {servers: [{url: "http://takein-provider-api:8080"}]}}
+    takein-catalog: {loadBalancer: {servers: [{url: "http://takein-catalog-api:8080"}]}}
+    takein-booking: {loadBalancer: {servers: [{url: "http://takein-booking-api:8080"}]}}
+    takein-payment: {loadBalancer: {servers: [{url: "http://takein-payment-api:8080"}]}}
+    takein-billing: {loadBalancer: {servers: [{url: "http://takein-billing-api:8080"}]}}
+    takein-notification: {loadBalancer: {servers: [{url: "http://takein-notification-api:8080"}]}}
+    takein-chat: {loadBalancer: {servers: [{url: "http://takein-chat-api:8080"}]}}
+    takein-media: {loadBalancer: {servers: [{url: "http://takein-media-api:8080"}]}}
+    takein-audit: {loadBalancer: {servers: [{url: "http://takein-audit-api:8080"}]}}

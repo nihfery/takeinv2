@@ -1,0 +1,23 @@
+go 1.26.6
+
+toolchain go1.26.6
+
+use (
+	./gen/go
+	./libs/go
+	./services/audit-service
+	./services/billing-service
+	./services/booking-service
+	./services/catalog-service
+	./services/chat-service
+	./services/customer-service
+	./services/identity-service
+	./services/media-service
+	./services/notification-service
+	./services/payment-service
+	./services/provider-service
+	./tools/contract-check
+	./tools/kafka-admin
+	./tools/schema-migrator
+	./tools/testdb
+)

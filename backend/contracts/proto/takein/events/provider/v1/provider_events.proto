@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package takein.events.provider.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/events/provider/v1;providereventsv1";
+
+import "takein/events/common/v1/metadata.proto";
+
+message ProviderChanged {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string provider_id = 2;
+  string change_type = 3;
+  string status = 4;
+  string user_id = 5;
+  string display_name = 6;
+  string category = 7;
+  bool ready = 8;
+}
+
+message BranchChanged {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string provider_id = 2;
+  string branch_id = 3;
+  string status = 4;
+  string change_type = 5;
+  string branch_name = 6;
+  string address = 7;
+  string city_id = 8;
+  string state_id = 9;
+  string country_id = 10;
+  string latitude = 11;
+  string longitude = 12;
+  bool ready = 13;
+}
+
+message StaffChanged {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string provider_id = 2;
+  string staff_id = 3;
+  string status = 4;
+  string change_type = 5;
+  string branch_id = 6;
+  string display_name = 7;
+  repeated string service_ids = 8;
+}
+
+message ProviderRoleChanged {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string provider_id = 2;
+  string provider_role_id = 3;
+  string branch_id = 4;
+  string identity_user_id = 5;
+  string role_name = 6;
+  string status = 7;
+  repeated string permissions = 8;
+  string change_type = 9;
+}

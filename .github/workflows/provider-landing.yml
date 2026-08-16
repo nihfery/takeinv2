@@ -61,5 +61,7 @@ jobs:
           NEXT_PUBLIC_BACKEND_URL: https://api.example.invalid
           NEXT_PUBLIC_API_BASE_URL: https://api.example.invalid/api
           NEXT_PUBLIC_PROVIDER_LOGIN_PATH: /provider/signin
-          NEXT_PUBLIC_PROVIDER_DASHBOARD_PATH: /provider/dashboard
+          NEXT_PUBLIC_PROVIDER_LOGIN_URL: https://provider.example.invalid/provider/login
+          NEXT_PUBLIC_PROVIDER_DASHBOARD_URL: https://provider.example.invalid/provider/dashboard
+          NEXT_PUBLIC_PROVIDER_VERIFICATION_URL: https://provider.example.invalid/provider/verification
         run: npm run build

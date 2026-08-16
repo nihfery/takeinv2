@@ -1,0 +1,22 @@
+version: "2"
+run:
+  timeout: 5m
+  tests: true
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - misspell
+    - nilerr
+    - noctx
+    - sqlclosecheck
+    - unconvert
+  exclusions:
+    generated: strict
+formatters:
+  enable: [gofmt, goimports]
+  exclusions:
+    generated: strict
+    paths:
+      - ".*\\.pb\\.go$"

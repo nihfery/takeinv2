@@ -1,17 +1,10 @@
-# SalonKu Customer Web
+# YouYaku Customer Web
 
-Next.js landing marketplace untuk customer SalonKu. Halaman ini membaca data publik Laravel untuk branch dan lokasi, lalu jatuh ke data demo jika backend belum berjalan.
+Next.js marketplace customer di port `5174`. Browser hanya memanggil `/api/*` pada origin Next; route BFF menyimpan access/refresh JWT Go dalam cookie HttpOnly, meneruskan request ke Traefik edge, dan melakukan refresh token server-side.
 
-## Local Development
+## Menjalankan lokal
 
-Jalankan Laravel backend dari root repository:
-
-```bash
-cd backend/laravel-core
-php artisan serve --host=0.0.0.0
-```
-
-Jalankan customer web dari root repository di terminal lain:
+Jalankan stack Go dari root (atau gunakan container yang sudah aktif), lalu frontend:
 
 ```bash
 cd apps/customer-web
@@ -19,29 +12,27 @@ npm ci
 npm run dev
 ```
 
-Buka:
+Buka `http://127.0.0.1:5174`.
+
+Salin `.env.example` menjadi `.env`. Nilai lokal utama:
 
 ```text
-http://127.0.0.1:5174
-```
-
-## Environment
-
-Copy `.env.example` menjadi `.env` lalu sesuaikan URL:
-
-```text
-NEXT_PUBLIC_BACKEND_URL=http://127.0.0.1:8000
-NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000/api
+GO_API_BASE_URL=http://127.0.0.1:8088
+GO_IDENTITY_URL=http://127.0.0.1:18081
+TAKEIN_COOKIE_SECURE=false
 NEXT_PUBLIC_PROVIDER_FRONTEND_URL=http://127.0.0.1:5173
 NEXT_PUBLIC_CUSTOMER_APP_URL=http://127.0.0.1:5174
 ```
 
-Route utama:
+Set `TAKEIN_COOKIE_SECURE=true` hanya ketika frontend disajikan melalui HTTPS.
 
-```text
-/
-/search
-```
+## Integrasi Go
+
+- identity-service: register, login, me, logout, dan refresh sesi.
+- catalog-service: pencarian, branch, staff, layanan, review, dan voucher.
+- booking-service: availability, hold, finalize, daftar booking, reschedule, dan cancel.
+- payment-service: charge, status, dan konfirmasi pembayaran.
+- customer-service: profil, aktivitas, review, dan favorit tersimpan di PostgreSQL.
 
 Build production:
 

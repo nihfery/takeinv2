@@ -57,6 +57,52 @@ export function normalizeCategorySlug(value) {
     }
 }
 
+function taxonomyId(value) {
+    return String(value ?? '').trim();
+}
+
+function normalizeTaxonomyItem(item = {}) {
+    return {
+        ...item,
+        id: item.id ?? item.category_id ?? item.slug ?? item.name,
+        name: String(item.name || item.title || item.label || '').trim(),
+        slug: normalizeCategorySlug(item.slug || item.name || item.title),
+        parent_id: item.parent_id ?? item.parentId ?? null,
+    };
+}
+
+export function buildServiceTaxonomy(categories = []) {
+    if (!Array.isArray(categories)) return [];
+
+    const normalized = categories.map(normalizeTaxonomyItem).filter((item) => item.name && item.slug);
+    const byID = new Map(normalized.map((item) => [taxonomyId(item.id), item]));
+    const childrenByParent = new Map();
+
+    normalized.forEach((item) => {
+        const parentID = taxonomyId(item.parent_id);
+        if (!parentID) return;
+
+        const siblings = childrenByParent.get(parentID) || [];
+        siblings.push(item);
+        childrenByParent.set(parentID, siblings);
+    });
+
+    return normalized
+        .filter((item) => !taxonomyId(item.parent_id) || !byID.has(taxonomyId(item.parent_id)))
+        .map((group) => {
+            const nested = Array.isArray(group.children)
+                ? group.children.map(normalizeTaxonomyItem).filter((item) => item.name && item.slug)
+                : [];
+            const flatChildren = childrenByParent.get(taxonomyId(group.id)) || [];
+            const children = [...new Map(
+                [...nested, ...flatChildren].map((item) => [taxonomyId(item.id) || item.slug, item])
+            ).values()];
+
+            return { ...group, children };
+        })
+        .filter((group) => group.children.length > 0);
+}
+
 export function getCategoryPath(category) {
     const slug = normalizeCategorySlug(category?.slug || category?.name);
     return slug ? `/categories/${encodeURIComponent(slug)}` : '/';

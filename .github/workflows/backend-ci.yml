@@ -1,0 +1,42 @@
+name: Go backend CI
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ["backend/services/**", "backend/libs/go/**", "backend/gen/go/**", "backend/tools/**", "backend/tests/**", "backend/go.work*", ".github/workflows/backend-ci.yml"]
+  push:
+    branches: [main]
+permissions: {contents: read}
+concurrency:
+  group: go-backend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with: {go-version: 1.26.6, cache-dependency-path: "**/go.sum"}
+      - name: Install pinned quality tools
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+          go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+      - name: Format check
+        run: test -z "$(find gen libs services tools -name '*.go' -type f -exec gofmt -l {} +)"
+      - name: Workspace sync
+        run: go work sync && git diff --exit-code -- '**/go.mod' '**/go.sum' go.work.sum
+      - name: Test and vet every module
+        run: |
+          set -eu
+          for module in gen/go libs/go services/* tools/contract-check tools/kafka-admin tools/schema-migrator tools/testdb; do
+            (cd "$module" && go test -count=1 ./... && go vet ./... && golangci-lint run ./... && govulncheck ./...)
+          done
+          (cd tests/e2e && GOWORK=off go test -count=1 ./... && GOWORK=off go vet ./... && GOWORK=off golangci-lint run ./... && GOWORK=off govulncheck ./...)
+      - name: Race-critical packages
+        run: |
+          (cd services/catalog-service && go test -race ./internal/catalog ./internal/persistence/postgres)
+          (cd services/booking-service && go test -race ./internal/booking ./internal/persistence/postgres)
+          (cd services/payment-service && go test -race ./internal/payment ./internal/persistence/postgres)

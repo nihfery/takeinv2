@@ -1,0 +1,87 @@
+# Optional local developer overlay. Production/staging must not include this
+# file: their APIs, gRPC listeners, and worker metrics remain private.
+services:
+  takein-identity-api:
+    ports:
+      - "127.0.0.1:${TAKEIN_IDENTITY_HTTP_PORT:-18081}:8080"
+      - "127.0.0.1:${TAKEIN_IDENTITY_GRPC_PORT:-19081}:9090"
+  takein-identity-worker:
+    ports:
+      - "127.0.0.1:${TAKEIN_IDENTITY_METRICS_PORT:-20081}:8081"
+
+  takein-customer-api:
+    ports:
+      - "127.0.0.1:${TAKEIN_CUSTOMER_HTTP_PORT:-18082}:8080"
+      - "127.0.0.1:${TAKEIN_CUSTOMER_GRPC_PORT:-19082}:9090"
+  takein-customer-worker:
+    ports:
+      - "127.0.0.1:${TAKEIN_CUSTOMER_METRICS_PORT:-20082}:8081"
+
+  takein-provider-api:
+    ports:
+      - "127.0.0.1:${TAKEIN_PROVIDER_HTTP_PORT:-18083}:8080"
+      - "127.0.0.1:${TAKEIN_PROVIDER_GRPC_PORT:-19083}:9090"
+  takein-provider-worker:
+    ports:
+      - "127.0.0.1:${TAKEIN_PROVIDER_METRICS_PORT:-20083}:8081"
+
+  takein-catalog-api:
+    ports:
+      - "127.0.0.1:${TAKEIN_CATALOG_HTTP_PORT:-18084}:8080"
+      - "127.0.0.1:${TAKEIN_CATALOG_GRPC_PORT:-19084}:9090"
+  takein-catalog-worker:
+    ports:
+      - "127.0.0.1:${TAKEIN_CATALOG_METRICS_PORT:-20084}:8081"
+
+  takein-booking-api:
+    ports:
+      - "127.0.0.1:${TAKEIN_BOOKING_HTTP_PORT:-18085}:8080"
+      - "127.0.0.1:${TAKEIN_BOOKING_GRPC_PORT:-19085}:9090"
+  takein-booking-worker:
+    ports:
+      - "127.0.0.1:${TAKEIN_BOOKING_METRICS_PORT:-20085}:8081"
+
+  takein-payment-api:
+    ports:
+      - "127.0.0.1:${TAKEIN_PAYMENT_HTTP_PORT:-18086}:8080"
+      - "127.0.0.1:${TAKEIN_PAYMENT_GRPC_PORT:-19086}:9090"
+  takein-payment-worker:
+    ports:
+      - "127.0.0.1:${TAKEIN_PAYMENT_METRICS_PORT:-20086}:8081"
+
+  takein-billing-api:
+    ports:
+      - "127.0.0.1:${TAKEIN_BILLING_HTTP_PORT:-18087}:8080"
+      - "127.0.0.1:${TAKEIN_BILLING_GRPC_PORT:-19087}:9090"
+  takein-billing-worker:
+    ports:
+      - "127.0.0.1:${TAKEIN_BILLING_METRICS_PORT:-20087}:8081"
+
+  takein-notification-api:
+    ports:
+      - "127.0.0.1:${TAKEIN_NOTIFICATION_HTTP_PORT:-18088}:8080"
+  takein-notification-worker:
+    ports:
+      - "127.0.0.1:${TAKEIN_NOTIFICATION_METRICS_PORT:-20088}:8081"
+
+  takein-chat-api:
+    ports:
+      - "127.0.0.1:${TAKEIN_CHAT_HTTP_PORT:-18089}:8080"
+  takein-chat-worker:
+    ports:
+      - "127.0.0.1:${TAKEIN_CHAT_METRICS_PORT:-20089}:8081"
+
+  takein-media-api:
+    ports:
+      - "127.0.0.1:${TAKEIN_MEDIA_HTTP_PORT:-18090}:8080"
+      - "127.0.0.1:${TAKEIN_MEDIA_GRPC_PORT:-19090}:9090"
+  takein-media-worker:
+    ports:
+      - "127.0.0.1:${TAKEIN_MEDIA_METRICS_PORT:-20090}:8081"
+
+  takein-audit-api:
+    ports:
+      - "127.0.0.1:${TAKEIN_AUDIT_HTTP_PORT:-18091}:8080"
+  takein-audit-worker:
+    ports:
+      - "127.0.0.1:${TAKEIN_AUDIT_METRICS_PORT:-20091}:8081"

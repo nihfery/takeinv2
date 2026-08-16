@@ -1,38 +1,21 @@
 # Threat model
 
-## Assets and boundaries
+Trust boundary publik mencakup empat origin Next.js, API edge, webhook, dan
+WebSocket. PostgreSQL, Redis, Kafka, gRPC, worker, object credential, serta
+telemetry backend harus private.
 
-Critical assets are customer/provider identities, tenant isolation, booking
-capacity, payment/subscription state, KTP/NIB/chat data, session/token/keys,
-audit evidence, database backups, and operational availability. Trust boundaries
-are public Next.js, Laravel edge/origin, webhook ingress, WebSocket gateway,
-MySQL/Redis network, media storage, and optional telemetry/object-store egress.
+| Risiko | Kontrol utama |
+| --- | --- |
+| Credential/token theft | RS256, token singkat, refresh rotation, secure cookie, redacted logs |
+| Broken object authorization | RBAC + ownership check pada application layer |
+| Slot/payment race | transaction, row lock/constraint, idempotency key, race test |
+| Forged webhook/replay | signature verification, authoritative status fetch, replay key |
+| Cross-service data leak | database credential per service, gRPC contract, network private |
+| Event duplication/poison message | inbox/outbox, idempotent consumer, bounded retry, DLQ |
+| Malicious upload | size/type policy, random object key, private bucket, signed URL |
+| Supply-chain compromise | lockfile, Go/npm audit, image scan, immutable image |
+| Dependency outage | readiness, circuit/bounded retry, persisted source of truth, runbook |
 
-## Primary threats and controls
-
-| Threat | Implemented controls | Residual / required operations |
-| --- | --- | --- |
-| Credential stuffing/session theft | Login rate limits, hashed passwords, secure/http-only encrypted Redis session, regeneration | MFA/admin edge policy not provisioned; credential monitoring external |
-| IDOR/BOLA/cross-tenant access | Auth middleware, provider owner/branch/menu/status/document scope, customer ownership checks, negative tests | Continue per-endpoint review; some compatibility controllers remain large |
-| Booking double-spend/slot race | MySQL/InnoDB transaction, row locks, unique customer idempotency, real-process concurrency suite | Production load/capacity and deadlock monitoring still required |
-| Coupon/payment replay | Coupon locking/quantity tests, signature verification, authoritative Midtrans status, order/amount/currency checks, state transitions/audit | Midtrans keys/IP/edge monitoring external; reconciliation runbook required |
-| Malicious upload/data exposure | MIME+extension+size allowlist, private KTP/NIB/chat disks, signed and authorized downloads | No malware scanner; legacy public image flows and historical public objects remain |
-| WebSocket impersonation | Explicit origin hosts, no client events, private channel actor/tenant/thread checks | DNS/TLS/edge and multi-instance production smoke test external |
-| Secret/query leakage | `.env` ignored, orchestrator references, log redaction, queryless Nginx/FPM access logs, inbound ID overwrite | CI/host/log sink policy must be operated; historical logs need separate review |
-| Dependency/supply-chain compromise | Lockfiles, Composer/npm audit and CI scan workflows | Pin/registry/provenance policy and timely remediation owned by maintainers |
-| Redis/MySQL outage | Internal network, password, persistence, readiness, runbooks | HA/failover/backups/off-site restore not provisioned by repository |
-| Telemetry outage/exfiltration | Optional fail-open exporter, bounded timeout/no retry, redaction | External collector trust, TLS, retention, and access controls not provisioned |
-
-## Known residual risks
-
-- Admin MFA and external access policy are not implemented here.
-- API registration and provider sign-in retain CSRF compatibility exceptions.
-- Audit persistence is fail-open and coverage is not universal.
-- Malware scanning is absent; several public image flows remain legacy.
-- S3/R2, CDN, DNS/TLS, OTLP/Grafana/Loki, alert delivery, mail delivery, MySQL
-  HA/PITR, Redis HA, and off-site backup are templates or external work only.
-- Category relation normalization is not a security boundary and legacy service
-  rows may retain a nullable `category_id`.
-
-Threat-model review is required for new host sharing, session domain widening,
-new file types, new webhook providers, partner APIs, or data export features.
+Risiko residual mencakup kapasitas produksi, managed-service HA, DNS/TLS, alert
+delivery, off-site backup, dan secret-manager availability; platform owner harus
+menyediakan serta menguji kontrol tersebut.

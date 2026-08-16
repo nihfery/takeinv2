@@ -1,0 +1,3400 @@
+﻿{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "TAKEIN Provider API",
+    "version": "1.0.0",
+    "description": "Existing provider-owner and provider-branch API contract. Every operation requires JWT authentication plus the server-side provider account, branch, and menu permission checks identified by x-provider-permission."
+  },
+  "servers": [
+    {
+      "url": "https://api.takein.id/api",
+      "description": "Production API ingress"
+    }
+  ],
+  "paths": {
+    "/provider/profile": {
+      "get": {
+        "operationId": "showProviderProfile",
+        "summary": "Show the current provider profile",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "profile",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateProviderProfile",
+        "summary": "Update the current provider profile",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "profile",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderProfileUpdateRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/provider/profile/documents/{document}": {
+      "get": {
+        "operationId": "downloadProviderDocument",
+        "summary": "Download an owned private provider document",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "owner",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Private document bytes",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "document",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ktp",
+                "nib"
+              ]
+            }
+          },
+          {
+            "name": "expires",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "signature",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/provider/profile/documents": {
+      "post": {
+        "operationId": "updateProviderDocuments",
+        "summary": "Submit provider verification documents",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "profile",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderDocumentUpdateRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/provider/profile/password": {
+      "put": {
+        "operationId": "updateProviderPassword",
+        "summary": "Change the current provider account password",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "profile",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderPasswordUpdateRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/provider/services": {
+      "get": {
+        "operationId": "listProviderService",
+        "summary": "List provider services",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "services",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "enum": [
+                10,
+                25,
+                50,
+                100
+              ]
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "createProviderService",
+        "summary": "Create provider service",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "services",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceWriteRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/provider/services/{service}": {
+      "get": {
+        "operationId": "showProviderService",
+        "summary": "Show provider service",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "services",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "service",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "put": {
+        "operationId": "replaceProviderService",
+        "summary": "Update provider service",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "services",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "service",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceWriteRequest"
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateProviderService",
+        "summary": "Update provider service",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "services",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "service",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceWriteRequest"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteProviderService",
+        "summary": "Delete provider service",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "services",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "service",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/provider/services/{service}/branch": {
+      "put": {
+        "operationId": "updateProviderServiceBranches",
+        "summary": "Update service branch assignments",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "services",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "service",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceBranchUpdateRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/provider/services/{service}/gallery": {
+      "put": {
+        "operationId": "updateProviderServiceGallery",
+        "summary": "Update service gallery media",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "services",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "service",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceGalleryUpdateRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/provider/services/{service}/toggle-status": {
+      "patch": {
+        "operationId": "toggleProviderServiceStatus",
+        "summary": "Toggle service active status",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "services",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "service",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/provider/staff": {
+      "get": {
+        "operationId": "listProviderStaff",
+        "summary": "List provider staff",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "staffs",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "enum": [
+                10,
+                25,
+                50,
+                100
+              ]
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "createProviderStaff",
+        "summary": "Create provider staff",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "staffs",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffWriteRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/provider/staff/{staff}": {
+      "get": {
+        "operationId": "showProviderStaff",
+        "summary": "Show provider staff",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "staffs",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "staff",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "put": {
+        "operationId": "replaceProviderStaff",
+        "summary": "Update provider staff",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "staffs",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "staff",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffWriteRequest"
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateProviderStaff",
+        "summary": "Update provider staff",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "staffs",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "staff",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffWriteRequest"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteProviderStaff",
+        "summary": "Delete provider staff",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "staffs",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "staff",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/provider/branches": {
+      "get": {
+        "operationId": "listProviderBranch",
+        "summary": "List provider branches",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "branch",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "enum": [
+                10,
+                25,
+                50,
+                100
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createProviderBranch",
+        "summary": "Create provider branch",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "branch",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/BranchCreateRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/provider/branches/{branch}": {
+      "get": {
+        "operationId": "showProviderBranch",
+        "summary": "Show provider branch",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "branch",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "branch",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "put": {
+        "operationId": "replaceProviderBranch",
+        "summary": "Update provider branch",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "branch",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "branch",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/BranchWriteRequest"
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateProviderBranch",
+        "summary": "Update provider branch",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "branch",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "branch",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/BranchWriteRequest"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteProviderBranch",
+        "summary": "Delete provider branch",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "branch",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "branch",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/provider/branches/{branch}/staff": {
+      "put": {
+        "operationId": "updateProviderBranchStaff",
+        "summary": "Replace branch staff assignments",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "branch",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "branch",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BranchStaffUpdateRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/provider/branches/{branch}/preview": {
+      "get": {
+        "operationId": "previewProviderBranch",
+        "summary": "Preview an owned branch",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "branch",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "branch",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/provider/subscriptions": {
+      "get": {
+        "operationId": "listProviderSubscriptions",
+        "summary": "List plans and the current subscription",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "owner",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/provider/subscriptions/plans/{plan}/purchase": {
+      "post": {
+        "operationId": "purchaseProviderSubscription",
+        "summary": "Purchase an active subscription plan",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "owner",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Provider scope or permission denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "plan",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentChannelRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/provider/bookings": {
+      "get": {
+        "operationId": "listProviderBookingsGo",
+        "summary": "List bookings within the provider and branch scope",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.bookings.index",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "bookings",
+        "security": [{"bearerAuth": []}],
+        "responses": {"200": {"description": "Provider booking list"}, "401": {"description": "Unauthenticated"}, "403": {"description": "Provider scope or permission denied"}}
+      }
+    },
+    "/provider/bookings/calendar": {
+      "get": {
+        "operationId": "listProviderBookingCalendarGo",
+        "summary": "List calendar bookings over a bounded date range",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.calendar.index",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "calendar",
+        "security": [{"bearerAuth": []}],
+        "responses": {"200": {"description": "Scoped calendar booking entries"}, "401": {"description": "Unauthenticated"}, "403": {"description": "Provider scope or permission denied"}, "422": {"description": "Invalid calendar range"}}
+      }
+    },
+    "/provider/bookings/queue": {
+      "get": {
+        "operationId": "listProviderBookingQueueGo",
+        "summary": "List the active daily queue in queue-number order",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.queue.index",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "queue",
+        "security": [{"bearerAuth": []}],
+        "responses": {"200": {"description": "Scoped active queue"}, "401": {"description": "Unauthenticated"}, "403": {"description": "Provider scope or permission denied"}, "422": {"description": "Invalid date"}}
+      }
+    },
+    "/provider/bookings/walk-in/availability": {
+      "post": {
+        "operationId": "checkProviderWalkInAvailabilityGo",
+        "summary": "Check a provider-created appointment slot",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.walk-in.availability",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "walk_in",
+        "security": [{"bearerAuth": []}],
+        "responses": {"200": {"description": "Availability result"}, "401": {"description": "Unauthenticated"}, "403": {"description": "Provider scope or permission denied"}, "422": {"description": "Validation failed"}}
+      }
+    },
+    "/provider/bookings/walk-in": {
+      "post": {
+        "operationId": "createProviderWalkInBookingGo",
+        "summary": "Create a walk-in or manual provider booking",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.walk-in.store",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "walk_in",
+        "security": [{"bearerAuth": []}],
+        "responses": {"201": {"description": "Walk-in booking created"}, "401": {"description": "Unauthenticated"}, "403": {"description": "Provider scope or permission denied"}, "409": {"description": "Slot or idempotency conflict"}, "422": {"description": "Validation failed"}}
+      }
+    },
+    "/provider/bookings/{booking}/call": {
+      "post": {
+        "operationId": "callProviderQueueBookingGo",
+        "summary": "Call a queued booking",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.queue.call",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "queue",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"name": "booking", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "Booking called"}, "403": {"description": "Provider scope or permission denied"}, "404": {"description": "Booking not found"}, "422": {"description": "Invalid status transition"}}
+      }
+    },
+    "/provider/bookings/{booking}/check-in": {
+      "post": {
+        "operationId": "checkInProviderBookingGo",
+        "summary": "Check in a booking customer",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.bookings.check-in",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "bookings",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"name": "booking", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "Customer checked in"}, "403": {"description": "Provider scope or permission denied"}, "404": {"description": "Booking not found"}, "422": {"description": "Invalid status transition"}}
+      }
+    },
+    "/provider/bookings/{booking}/start": {
+      "post": {
+        "operationId": "startProviderBookingGo",
+        "summary": "Start providing the booked service",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.bookings.start",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "bookings",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"name": "booking", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "Booking started"}, "403": {"description": "Provider scope or permission denied"}, "404": {"description": "Booking not found"}, "422": {"description": "Invalid status transition"}}
+      }
+    },
+    "/provider/bookings/{booking}/complete": {
+      "post": {
+        "operationId": "completeProviderBookingGo",
+        "summary": "Complete a provider booking",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.bookings.complete",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "bookings",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"name": "booking", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "Booking completed"}, "403": {"description": "Provider scope or permission denied"}, "404": {"description": "Booking not found"}, "422": {"description": "Invalid status transition"}}
+      }
+    },
+    "/provider/bookings/{booking}/cancel": {
+      "post": {
+        "operationId": "cancelProviderBookingGo",
+        "summary": "Cancel a provider booking",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.bookings.cancel",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "bookings",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"name": "booking", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "Booking cancelled"}, "403": {"description": "Provider scope or permission denied"}, "404": {"description": "Booking not found"}, "422": {"description": "Invalid status transition"}}
+      }
+    },
+    "/provider/bookings/{booking}/no-show": {
+      "post": {
+        "operationId": "markProviderBookingNoShowGo",
+        "summary": "Mark a booking as no-show",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.bookings.no-show",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "bookings",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"name": "booking", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "Booking marked no-show"}, "403": {"description": "Provider scope or permission denied"}, "404": {"description": "Booking not found"}, "422": {"description": "Invalid status transition"}}
+      }
+    },
+    "/provider/staff/{staff}/skills": {
+      "get": {
+        "operationId": "showProviderStaffSkillsGo",
+        "summary": "Show service skills assigned to a staff member",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.staff.skills",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "staff_skills",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"name": "staff", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "Staff skills"}, "403": {"description": "Provider scope or permission denied"}, "404": {"description": "Staff not found"}}
+      },
+      "put": {
+        "operationId": "replaceProviderStaffSkillsGo",
+        "summary": "Replace service skills assigned to a staff member",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.staff.skills.update",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "staff_skills",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"name": "staff", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "Staff skills replaced"}, "403": {"description": "Provider scope or permission denied"}, "404": {"description": "Staff not found"}, "422": {"description": "Validation failed"}}
+      }
+    },
+    "/provider/staff/{staff}/schedules": {
+      "get": {
+        "operationId": "showProviderStaffSchedulesGo",
+        "summary": "Show availability schedules assigned to a staff member",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.staff.schedules",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "staff_schedules",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"name": "staff", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "Staff schedules"}, "403": {"description": "Provider scope or permission denied"}, "404": {"description": "Staff not found"}}
+      },
+      "put": {
+        "operationId": "replaceProviderStaffSchedulesGo",
+        "summary": "Replace availability schedules assigned to a staff member",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.staff.schedules.update",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "staff_schedules",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"name": "staff", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "Staff schedules replaced"}, "403": {"description": "Provider scope or permission denied"}, "404": {"description": "Staff not found"}, "422": {"description": "Validation failed"}}
+      }
+    },
+    "/provider/payments": {
+      "get": {
+        "operationId": "listProviderPaymentsGo",
+        "summary": "List provider payments with provider and branch isolation",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.payments.index",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "payments",
+        "security": [{"bearerAuth": []}],
+        "responses": {"200": {"description": "Provider payment list"}, "401": {"description": "Unauthenticated"}, "403": {"description": "Provider scope or permission denied"}, "422": {"description": "Invalid filter"}}
+      }
+    },
+    "/provider/roles-permissions": {
+      "get": {
+        "operationId": "listProviderRolesPermissionsGo",
+        "summary": "List branch accounts and their menu permissions",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.roles-permissions.index",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "owner",
+        "security": [{"bearerAuth": []}],
+        "responses": {"200": {"description": "Provider role list"}, "401": {"description": "Unauthenticated"}, "403": {"description": "Only the provider owner may manage roles"}}
+      },
+      "post": {
+        "operationId": "createProviderRolePermissionGo",
+        "summary": "Create a branch account with an explicit permission set",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.roles-permissions.store",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "owner",
+        "security": [{"bearerAuth": []}],
+        "responses": {"201": {"description": "Provider role and branch account created"}, "401": {"description": "Unauthenticated"}, "403": {"description": "Only the provider owner may manage roles"}, "409": {"description": "Role or account conflicts"}, "422": {"description": "Validation failed"}}
+      }
+    },
+    "/provider/customers": {
+      "get": {
+        "operationId": "listProviderCustomersGo",
+        "summary": "List customers who booked within the provider and branch scope",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.customers.index",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "customers",
+        "security": [{"bearerAuth": []}],
+        "responses": {"200": {"description": "Scoped provider customer directory and summary"}, "401": {"description": "Unauthenticated"}, "403": {"description": "Provider scope or permission denied"}}
+      }
+    },
+    "/provider/reviews": {
+      "get": {
+        "operationId": "listProviderReviewsGo",
+        "summary": "List branch and staff reviews within provider scope",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.reviews.index",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "reviews",
+        "security": [{"bearerAuth": []}],
+        "responses": {"200": {"description": "Scoped branch/staff reviews and rating summary"}, "401": {"description": "Unauthenticated"}, "403": {"description": "Provider scope or permission denied"}, "422": {"description": "Invalid rating filter"}}
+      }
+    },
+    "/provider/roles-permissions/{role}": {
+      "put": {
+        "operationId": "updateProviderRolePermissionGo",
+        "summary": "Replace a branch account and its permission set",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.roles-permissions.update",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "owner",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"name": "role", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "Provider role and branch account updated"}, "403": {"description": "Only the provider owner may manage roles"}, "404": {"description": "Role not found"}, "409": {"description": "Role or account conflicts"}, "422": {"description": "Validation failed"}}
+      },
+      "delete": {
+        "operationId": "deactivateProviderRolePermissionGo",
+        "summary": "Deactivate a role while retaining its branch account",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.roles-permissions.destroy",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "owner",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"name": "role", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "Provider role deactivated"}, "403": {"description": "Only the provider owner may manage roles"}, "404": {"description": "Role not found"}}
+      }
+    },
+    "/provider/roles-permissions/{role}/toggle-status": {
+      "patch": {
+        "operationId": "toggleProviderRolePermissionStatusGo",
+        "summary": "Toggle the role and branch account status together",
+        "x-go-native": true,
+        "x-migration-source-route": "provider.roles-permissions.toggle-status",
+        "x-authentication": "bearerAuth",
+        "x-provider-permission": "owner",
+        "security": [{"bearerAuth": []}],
+        "parameters": [{"name": "role", "in": "path", "required": true, "schema": {"type": "integer"}}],
+        "responses": {"200": {"description": "Provider role status toggled"}, "403": {"description": "Only the provider owner may manage roles"}, "404": {"description": "Role not found"}}
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "JsonObject": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ProviderProfileUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "email"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255
+          },
+          "phone_number": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Allowed media: JPEG, PNG, or WebP; maximum 2 MiB."
+          }
+        }
+      },
+      "ProviderDocumentUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "nib_number"
+        ],
+        "properties": {
+          "nib_number": {
+            "type": "string",
+            "maxLength": 50,
+            "pattern": "^[0-9.\\-\\s]+$"
+          },
+          "ktp_image": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Allowed media: JPEG, PNG, or WebP; maximum 4 MiB."
+          },
+          "nib_document": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Allowed media: PDF, JPEG, PNG, or WebP; maximum 5 MiB."
+          },
+          "business_image": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Allowed media: JPEG, PNG, or WebP; maximum 4 MiB."
+          }
+        }
+      },
+      "ProviderPasswordUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "current_password",
+          "password",
+          "password_confirmation"
+        ],
+        "properties": {
+          "current_password": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8
+          },
+          "password_confirmation": {
+            "type": "string",
+            "minLength": 8
+          }
+        }
+      },
+      "BranchCreateRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BranchWriteRequest"
+          },
+          {
+            "type": "object",
+            "required": [
+              "image"
+            ]
+          }
+        ]
+      },
+      "BranchWriteRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "branch_name",
+          "email",
+          "phone_code",
+          "phone_number",
+          "address",
+          "country_id",
+          "state_id",
+          "city_id",
+          "zip_code",
+          "working_start_hour",
+          "working_end_hour",
+          "working_days"
+        ],
+        "properties": {
+          "branch_name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255
+          },
+          "phone_code": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "phone_number": {
+            "type": "string",
+            "maxLength": 30
+          },
+          "address": {
+            "type": "string"
+          },
+          "country_id": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "state_id": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "city_id": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "latitude": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": -180,
+            "maximum": 180
+          },
+          "zip_code": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "working_start_hour": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "working_end_hour": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "working_days": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "maxLength": 20
+            }
+          },
+          "holidays": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date"
+            }
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "active",
+              "inactive",
+              null
+            ]
+          },
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Allowed media: JPEG, PNG, or WebP; maximum 2 MiB."
+          }
+        }
+      },
+      "ServiceWriteRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "category",
+          "price"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "category_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "includes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "price_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minimum_duration": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "estimated_duration": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "maximum_duration": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "is_queue_enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "is_scheduled_enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "requires_dp": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "dp_amount": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "payment_policy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1000
+          },
+          "slots": {
+            "oneOf": [
+              {
+                "type": "array"
+              },
+              {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "additional_services": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 255
+                },
+                "price": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "description": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 255
+                }
+              }
+            }
+          },
+          "holidays": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "date": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date"
+                },
+                "full_day": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "branch_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer"
+            }
+          },
+          "gallery_image": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Allowed media: JPEG, PNG, or WebP; maximum 2 MiB."
+          },
+          "video_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri",
+            "maxLength": 255
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "active",
+              "inactive",
+              null
+            ]
+          }
+        }
+      },
+      "ServiceBranchUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "branch_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "ServiceGalleryUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "gallery_image": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Allowed media: JPEG, PNG, or WebP; maximum 2 MiB."
+          },
+          "video_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uri",
+            "maxLength": 255
+          }
+        }
+      },
+      "StaffWriteRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "first_name",
+          "last_name",
+          "email",
+          "category_id",
+          "branch_id"
+        ],
+        "properties": {
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "binary",
+            "description": "Allowed media: JPEG, PNG, or WebP; maximum 4 MiB."
+          },
+          "first_name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "last_name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "country_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 20
+          },
+          "phone_number": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "gender": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "male",
+              "female",
+              "other",
+              null
+            ]
+          },
+          "date_of_birth": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "country_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "state_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "city_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "postal_code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "bio": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category_id": {
+            "type": "integer"
+          },
+          "branch_id": {
+            "type": "integer"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "active",
+              "inactive",
+              null
+            ]
+          }
+        }
+      },
+      "BranchStaffUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "staff_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      },
+      "PaymentChannelRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "payment_channel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "qris",
+              "bca_va",
+              "bni_va",
+              "bri_va",
+              "permata_va",
+              "cimb_va",
+              "mandiri_bill",
+              null
+            ]
+          }
+        }
+      }
+    }
+  }
+}

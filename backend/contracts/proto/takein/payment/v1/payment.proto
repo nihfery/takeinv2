@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package takein.payment.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/payment/v1;paymentv1";
+
+import "takein/common/v1/common.proto";
+
+service PaymentService {
+  rpc GetPayment(GetPaymentRequest) returns (GetPaymentResponse);
+  rpc CreateSubscriptionCharge(CreateSubscriptionChargeRequest) returns (CreateSubscriptionChargeResponse);
+}
+
+message GetPaymentRequest {
+  string payment_id = 1;
+  takein.common.v1.RequestMetadata metadata = 2;
+}
+
+message GetPaymentResponse {
+  string payment_id = 1;
+  string booking_id = 2;
+  string status = 3;
+  takein.common.v1.Money amount = 4;
+}
+
+message CreateSubscriptionChargeRequest {
+  string subscription_id = 1;
+  string provider_id = 2;
+  takein.common.v1.Money amount = 3;
+  takein.common.v1.RequestMetadata metadata = 4;
+  string payment_channel = 5;
+}
+
+message CreateSubscriptionChargeResponse {
+  string payment_id = 1;
+  string gateway_order_id = 2;
+  string status = 3;
+  string redirect_url = 4;
+  string token = 5;
+  string expires_at = 6;
+  string payment_channel = 7;
+}

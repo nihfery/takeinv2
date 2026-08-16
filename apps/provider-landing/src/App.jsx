@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { registerProvider } from './api';
+import { currentProvider, loginProvider, registerProvider } from './api';
 import { Icon } from './components/Icons.jsx';
 
 // Import New Sections
@@ -52,22 +52,33 @@ function localizeLoopbackUrl(url) {
 }
 
 function localBackendUrl() {
-    return `http://${currentHostname()}:8000`;
+    return typeof window !== 'undefined' ? window.location.origin : '';
 }
 
 const backendUrl = localizeLoopbackUrl((typeof process !== 'undefined' && process.env.NEXT_PUBLIC_BACKEND_URL) || localBackendUrl());
-const apiBaseUrl = localizeLoopbackUrl((typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || `${backendUrl}/api`);
-const providerLoginPath = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_PROVIDER_LOGIN_PATH) || '/provider/signin';
-const providerDashboardPath = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_PROVIDER_DASHBOARD_PATH) || '/provider/dashboard';
+const apiBaseUrl = '/api';
+const providerLoginPath = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_PROVIDER_LOGIN_PATH) || '/register?mode=login';
+const providerConsoleLoginUrl = localizeLoopbackUrl(
+    (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_PROVIDER_LOGIN_URL)
+    || 'http://127.0.0.1:5175/provider/login',
+);
+const providerDashboardUrl = localizeLoopbackUrl(
+    (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_PROVIDER_DASHBOARD_URL)
+    || 'http://127.0.0.1:5175/provider/dashboard',
+);
+const providerVerificationUrl = localizeLoopbackUrl(
+    (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_PROVIDER_VERIFICATION_URL)
+    || 'http://127.0.0.1:5175/provider/verification',
+);
 
 const query = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
 
 const config = {
     loginUrl: `${backendUrl}${providerLoginPath}`,
-    dashboardUrl: `${backendUrl}${providerDashboardPath}`,
+    dashboardUrl: providerDashboardUrl,
     registerApiUrl: `${apiBaseUrl}/auth/register/provider`,
-    docsUrl: `${backendUrl}/docs/api`,
-    adminLoginUrl: `${backendUrl}/admin/login`,
+    docsUrl: '/docs/api',
+    adminLoginUrl: '/admin/login',
     openLogin: ['failed', 'open', '1'].includes(query.get('login')),
     openRegister: ['open', '1'].includes(query.get('register')),
     flash: {
@@ -109,11 +120,11 @@ function App() {
 
     useEffect(() => {
         if (config.openLogin || config.flash.error) {
-            let redirectUrl = '/register?mode=login';
+            const destination = new URL(providerConsoleLoginUrl, window.location.origin);
             if (config.flash.error) {
-                redirectUrl += `&login_error=${encodeURIComponent(config.flash.error)}`;
+                destination.searchParams.set('login_error', config.flash.error);
             }
-            window.location.href = redirectUrl;
+            window.location.href = destination.toString();
             return;
         }
 
@@ -126,6 +137,10 @@ function App() {
 
     function openRegister(prefill = {}) {
         window.location.href = '/register';
+    }
+
+    function openLogin() {
+        window.location.href = providerConsoleLoginUrl;
     }
 
     function updateRegisterField(field, value) {
@@ -152,8 +167,18 @@ function App() {
                 password_confirmation: registerForm.passwordConfirmation,
             });
 
+            for (let attempt = 0; attempt < 8; attempt += 1) {
+                if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 500));
+                const current = await currentProvider();
+                if (current?.user?.provider_id) break;
+            }
+            await loginProvider({ email: registerForm.email, password: registerForm.password });
             setRegisterMessage('Pendaftaran berhasil. Membuka halaman verifikasi mitra...');
-            window.location.assign(`${backendUrl}${result.redirect_url || '/provider/verification'}`);
+            const destination = new URL(providerConsoleLoginUrl, window.location.origin);
+            destination.searchParams.set('registered', '1');
+            destination.searchParams.set('email', registerForm.email);
+            destination.searchParams.set('next', new URL(providerVerificationUrl, window.location.origin).pathname);
+            window.location.assign(destination.toString());
         } catch (error) {
             setRegisterErrors(error.errors || { form: [error.message] });
         } finally {

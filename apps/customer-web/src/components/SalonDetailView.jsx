@@ -16,8 +16,8 @@ import {
     X,
 } from 'lucide-react';
 import { FreshNavigation, Footer } from './LandingPage.jsx';
-import { getPublicBranchReviews, getPublicBranchServices, getPublicBranchStaff } from '../lib/auth-api.js';
-import { getFavoritesList, saveBookingDraft, saveStaffProfileSnapshot, toggleFavoriteSalon } from '../lib/mock-state.js';
+import { addCustomerFavorite, getCustomerFavorites, getPublicBranchReviews, getPublicBranchServices, getPublicBranchStaff, removeCustomerFavorite } from '../lib/auth-api.js';
+import { getFavoritesList, saveBookingDraft, saveFavoritesList, saveStaffProfileSnapshot } from '../lib/mock-state.js';
 import { findServiceByRoute, getBookingPath, getSalonPath, getSalonRouteSlug, getServiceSlug, getStaffPath } from '../lib/salon-routes.js';
 
 const fallbackGallery = [
@@ -106,6 +106,7 @@ function makeServices(branch, rawServices) {
     return rawServices.map((service, index) => {
         const name = service.name || service.title || `Service ${index + 1}`;
         const category = service.category_name
+            || service.category_text
             || service.service_category?.name
             || service.serviceCategory?.name
             || service.category
@@ -113,7 +114,7 @@ function makeServices(branch, rawServices) {
         const pricing = service.pivot || {};
 
         return {
-            id: service.id || service.slug || `${category}-${index}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            id: service.id ?? service.service_id ?? service.slug ?? `${category}-${index}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
             slug: service.slug || getServiceSlug({ ...service, name }),
             code: service.code,
             category,
@@ -130,8 +131,8 @@ function makeTeam(rawStaff) {
     if (!Array.isArray(rawStaff)) return [];
 
     return rawStaff.map((staff, index) => ({
-        id: staff.id || `staff-${index}`,
-        name: staff.name || staff.full_name || [staff.first_name, staff.last_name].filter(Boolean).join(' ') || staff.email || 'Staff',
+        id: staff.id ?? staff.staff_id ?? `staff-${index}`,
+        name: staff.name || staff.display_name || staff.full_name || [staff.first_name, staff.last_name].filter(Boolean).join(' ') || staff.email || 'Staff',
         role: staff.role || 'Staff',
         photo: staff.image_url || staff.image || '',
         rating: Number(staff.rating),
@@ -216,7 +217,9 @@ export function SalonDetailView({
     const [backendServices, setBackendServices] = useState(() => (
         Array.isArray(branch?.services) ? branch.services : []
     ));
-    const [servicesStatus, setServicesStatus] = useState('loading');
+    const [servicesStatus, setServicesStatus] = useState(() => (
+        branch?.initialServicesLoaded ? 'ready' : 'loading'
+    ));
     const [branchReviews, setBranchReviews] = useState(() => (
         Array.isArray(branch?.branchReviews) ? branch.branchReviews : []
     ));
@@ -306,7 +309,21 @@ export function SalonDetailView({
     }, [gallery.length, isGalleryOpen]);
 
     useEffect(() => {
-        setIsFavorite(getFavoritesList().includes(branch.id));
+        let cancelled = false;
+        const localFavorites = getFavoritesList();
+        setIsFavorite(localFavorites.some((id) => String(id) === String(branch.id)));
+
+        getCustomerFavorites()
+            .then((favorites) => {
+                if (cancelled) return;
+                saveFavoritesList(favorites);
+                setIsFavorite(favorites.some((id) => String(id) === String(branch.id)));
+            })
+            .catch(() => {});
+
+        return () => {
+            cancelled = true;
+        };
     }, [branch.id]);
 
     useEffect(() => {
@@ -314,6 +331,13 @@ export function SalonDetailView({
         const branchId = Number(branch?.id);
 
         setBackendServices(Array.isArray(branch?.services) ? branch.services : []);
+
+        if (branch?.initialServicesLoaded) {
+            setServicesStatus('ready');
+            return () => {
+                cancelled = true;
+            };
+        }
 
         if (!Number.isInteger(branchId) || branchId <= 0) {
             setServicesStatus('unavailable');
@@ -344,7 +368,7 @@ export function SalonDetailView({
         return () => {
             cancelled = true;
         };
-    }, [branch?.id]);
+    }, [branch?.id, branch?.initialServicesLoaded, branch?.services]);
 
     useEffect(() => {
         const branchId = Number(branch?.id);
@@ -442,9 +466,26 @@ export function SalonDetailView({
         openBooking();
     }
 
-    function toggleFavorite() {
-        const next = toggleFavoriteSalon(branch.id);
-        setIsFavorite(next.includes(branch.id));
+    async function toggleFavorite() {
+        const previous = isFavorite;
+        const next = !previous;
+        const localFavorites = getFavoritesList();
+        const nextFavorites = next
+            ? [...localFavorites.filter((id) => String(id) !== String(branch.id)), branch.id]
+            : localFavorites.filter((id) => String(id) !== String(branch.id));
+
+        setIsFavorite(next);
+        saveFavoritesList(nextFavorites);
+        try {
+            if (next) await addCustomerFavorite(branch.id);
+            else await removeCustomerFavorite(branch.id);
+        } catch (error) {
+            setIsFavorite(previous);
+            saveFavoritesList(localFavorites);
+            if (error?.status === 401) {
+                router.push(`/auth?next=${encodeURIComponent(window.location.pathname)}`);
+            }
+        }
     }
 
     function sharePage() {
@@ -655,8 +696,8 @@ export function SalonDetailView({
                                     {reviewsStatus !== 'loading' && branchReviews.length === 0 && (
                                         <p className="salon-detail-services-message">This salon has no reviews yet.</p>
                                     )}
-                                    {branchReviews.map((review) => (
-                                        <article key={review.id}>
+                                    {branchReviews.map((review, reviewIndex) => (
+                                        <article key={review.id ?? review.review_id ?? `review-${reviewIndex}`}>
                                             <span>{String(review.customer_name || 'C').slice(0, 1).toUpperCase()}</span>
                                             <div>
                                                 <b>{review.customer_name || 'Verified customer'}</b>
@@ -666,7 +707,7 @@ export function SalonDetailView({
                                                 {Array.isArray(review.images) && review.images.length > 0 && (
                                                     <div className="salon-detail-review-images">
                                                         {review.images.map((image, imageIndex) => (
-                                                            <img key={`${review.id}-image-${imageIndex}`} src={image} alt={`Foto ulasan dari ${review.customer_name || 'customer'}`} />
+                                                            <img key={`${review.id ?? review.review_id ?? reviewIndex}-image-${imageIndex}`} src={image} alt={`Foto ulasan dari ${review.customer_name || 'customer'}`} />
                                                         ))}
                                                     </div>
                                                 )}

@@ -65,7 +65,8 @@ export function CustomerSessionProvider({ children }) {
             setSessionReady(true);
         }
 
-        // Restore the in-tab session immediately, then verify the Sanctum cookie.
+        // Restore the in-tab display cache immediately, then verify the
+        // HttpOnly Go JWT session through the same-origin Next.js BFF.
         // This provider lives in the root layout, so this work happens only once
         // for client-side navigation instead of on every page's navbar mount.
         const localSession = getSessionUser();

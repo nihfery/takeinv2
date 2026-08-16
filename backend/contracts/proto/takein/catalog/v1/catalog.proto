@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package takein.catalog.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/catalog/v1;catalogv1";
+
+import "takein/common/v1/common.proto";
+
+service CatalogService {
+  rpc GetServicesSnapshot(GetServicesSnapshotRequest) returns (GetServicesSnapshotResponse);
+  rpc GetBranchBookingPage(GetBranchBookingPageRequest) returns (GetBranchBookingPageResponse);
+  rpc ValidateCoupon(ValidateCouponRequest) returns (ValidateCouponResponse);
+  rpc ReleaseCoupon(ReleaseCouponRequest) returns (ReleaseCouponResponse);
+}
+
+message GetBranchBookingPageRequest {
+  string branch_id = 1;
+  takein.common.v1.RequestMetadata metadata = 2;
+}
+
+// The public booking-page response is intentionally carried as JSON during
+// the legacy compatibility window because the existing landing payload is an
+// open object and includes projected catalog/provider fields.
+message GetBranchBookingPageResponse {
+  string json_payload = 1;
+}
+
+message GetServicesSnapshotRequest {
+  string provider_id = 1;
+  string branch_id = 2;
+  repeated string service_ids = 3;
+  takein.common.v1.RequestMetadata metadata = 4;
+}
+
+message GetServicesSnapshotResponse {
+  repeated ServiceSnapshot services = 1;
+}
+
+message ServiceSnapshot {
+  string service_id = 1;
+  string title = 2;
+  takein.common.v1.Money price = 3;
+  int32 duration_minutes = 4;
+  bool queue_enabled = 5;
+  bool scheduled_enabled = 6;
+  string provider_id = 7;
+  bool requires_dp = 8;
+  takein.common.v1.Money dp_amount = 9;
+}
+
+message ValidateCouponRequest {
+  string code = 1;
+  repeated string service_ids = 2;
+  takein.common.v1.Money subtotal = 3;
+  takein.common.v1.RequestMetadata metadata = 4;
+  string redemption_key = 5;
+  bool redeem = 6;
+}
+
+message ValidateCouponResponse {
+  bool valid = 1;
+  takein.common.v1.Money discount = 2;
+  string reason = 3;
+  takein.common.v1.Money subtotal = 4;
+  takein.common.v1.Money eligible_subtotal = 5;
+  takein.common.v1.Money tax = 6;
+  takein.common.v1.Money payable = 7;
+  string coupon_json = 8;
+}
+
+message ReleaseCouponRequest {
+  string redemption_key = 1;
+  takein.common.v1.RequestMetadata metadata = 2;
+}
+
+message ReleaseCouponResponse {
+  bool released = 1;
+}

@@ -1,7 +1,7 @@
 # Staff domain
 
 `Staff` owns `provider_staffs`, `staff_skills`, and `staff_schedules`, including
-provider API/Blade staff CRUD and staff assignment metadata.
+provider API/Next.js staff CRUD and staff assignment metadata.
 
 Staff belongs to a provider and may belong to a branch. Skills link staff to
 services; schedules define weekday and working intervals used by Availability.

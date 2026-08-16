@@ -1,0 +1,67 @@
+version: 1
+consumers:
+  - group: takein-customer-projections-v1
+    service: customer-service
+    topics: [takein.identity.events.v1, takein.booking.events.v1]
+    inbox: true
+    dlqs: [takein.identity.events.v1.dlq, takein.booking.events.v1.dlq]
+  - group: takein-provider-identity-v1
+    service: provider-service
+    topics: [takein.identity.events.v1, takein.booking.events.v1]
+    inbox: true
+    dlqs: [takein.identity.events.v1.dlq, takein.booking.events.v1.dlq]
+  - group: takein-identity-lifecycle-v1
+    service: identity-service
+    topics: [takein.provider.events.v1, takein.customer.events.v1]
+    inbox: true
+    dlqs: [takein.provider.events.v1.dlq, takein.customer.events.v1.dlq]
+  - group: takein-catalog-projections-v1
+    service: catalog-service
+    topics: [takein.provider.events.v1, takein.customer.events.v1]
+    inbox: true
+    dlqs: [takein.provider.events.v1.dlq, takein.customer.events.v1.dlq]
+  - group: takein-booking-payment-v1
+    service: booking-service
+    topics: [takein.payment.events.v1]
+    inbox: true
+    dlq: takein.payment.events.v1.dlq
+  - group: takein-payment-booking-v1
+    service: payment-service
+    topics: [takein.booking.events.v1]
+    inbox: true
+    dlq: takein.booking.events.v1.dlq
+  - group: takein-billing-payment-v1
+    service: billing-service
+    topics: [takein.payment.events.v1]
+    inbox: true
+    dlq: takein.payment.events.v1.dlq
+  - group: takein-notification-domain-events-v1
+    service: notification-service
+    topics: [takein.booking.events.v1, takein.payment.events.v1, takein.billing.events.v1, takein.provider.events.v1]
+    inbox: true
+    dlqs: [takein.booking.events.v1.dlq, takein.payment.events.v1.dlq, takein.billing.events.v1.dlq, takein.provider.events.v1.dlq]
+  - group: takein-audit-domain-v1
+    service: audit-service
+    topics:
+      - takein.identity.events.v1
+      - takein.customer.events.v1
+      - takein.provider.events.v1
+      - takein.catalog.events.v1
+      - takein.booking.events.v1
+      - takein.payment.events.v1
+      - takein.billing.events.v1
+      - takein.notification.events.v1
+      - takein.chat.events.v1
+      - takein.media.events.v1
+    inbox: true
+    dlqs:
+      - takein.identity.events.v1.dlq
+      - takein.customer.events.v1.dlq
+      - takein.provider.events.v1.dlq
+      - takein.catalog.events.v1.dlq
+      - takein.booking.events.v1.dlq
+      - takein.payment.events.v1.dlq
+      - takein.billing.events.v1.dlq
+      - takein.notification.events.v1.dlq
+      - takein.chat.events.v1.dlq
+      - takein.media.events.v1.dlq

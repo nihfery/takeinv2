@@ -1,4 +1,4 @@
-# Customer domain
+﻿# Customer domain
 
 `Customer` owns `customer_profiles` and `customer_activities`. Activities are
 the persisted continuation of the former customer-cart schema and can link to a
@@ -6,7 +6,7 @@ booking. Customer profile supports identity/contact fields plus religion and
 allergy data.
 
 Authenticated `/api/customer/profile` and `/api/customer/activity*` routes use
-Sanctum. Booking/payment/review endpoints are presented under the same customer
+JWT. Booking/payment/review endpoints are presented under the same customer
 prefix but owned by their respective modules.
 
 Customer data must always be scoped to the authenticated user. Admin customer

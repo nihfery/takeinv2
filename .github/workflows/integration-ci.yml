@@ -1,0 +1,38 @@
+name: Go integration CI
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ["backend/services/**", "backend/libs/**", "backend/tests/e2e/**", "backend/infra/**", "backend/docker-compose*.yml", "backend/scripts/go/**"]
+  push:
+    branches: [main]
+permissions: {contents: read}
+concurrency:
+  group: go-integration-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with: {go-version: 1.26.6, cache-dependency-path: "**/go.sum"}
+      - run: go install github.com/pressly/goose/v3/cmd/goose@v3.27.3
+      - run: docker compose --profile go-core up -d --wait takein-postgres takein-redis takein-kafka
+      - run: sh scripts/go/test-integration.sh
+      - name: Race detector against PostgreSQL
+        run: |
+          (cd services/catalog-service && TEST_DATABASE_URL='postgres://takein_catalog:catalog_local_only@127.0.0.1:15432/takein_catalog_test?sslmode=disable' go test -race ./internal/catalog ./internal/persistence/postgres)
+          (cd services/booking-service && TEST_DATABASE_URL='postgres://takein_booking:booking_local_only@127.0.0.1:15432/takein_booking_test?sslmode=disable' go test -race ./internal/booking ./internal/persistence/postgres)
+          (cd services/payment-service && TEST_DATABASE_URL='postgres://takein_payment:payment_local_only@127.0.0.1:15432/takein_payment_test?sslmode=disable' go test -race ./internal/payment ./internal/persistence/postgres)
+      - run: sh scripts/go/e2e.sh
+        timeout-minutes: 45
+      - run: sh scripts/go/smoke.sh
+      - if: always()
+        run: docker compose --profile go-core logs --no-color > integration-compose.log
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with: {name: integration-compose-log, path: backend/integration-compose.log}

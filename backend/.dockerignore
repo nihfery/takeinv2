@@ -1,0 +1,8 @@
+.git
+.github
+**/.env
+**/.env.*
+**/*.exe
+**/coverage
+infra/secrets/local/*
+!infra/secrets/local/.gitkeep

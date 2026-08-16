@@ -80,6 +80,8 @@ export default async function SalonDetailPage({ params, searchParams }) {
     const initialDetail = await getBranchInitialDetail(branch.id);
     const detailBranch = {
         ...branch,
+        services: initialDetail.servicesLoaded ? initialDetail.services : branch.services,
+        initialServicesLoaded: initialDetail.servicesLoaded,
         staff: initialDetail.staff,
         branchReviews: initialDetail.reviews,
         reviewSummary: initialDetail.summary,

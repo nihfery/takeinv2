@@ -1,4 +1,4 @@
-# SalonKu Customer Booking Flow
+﻿# SalonKu Customer Booking Flow
 
 Dokumen ini menjelaskan rancangan alur booking customer yang efektif, efisien, dan aman dari tabrakan slot antar user. Fokus utama dokumen ini adalah flow reservasi salon/wellness seperti marketplace booking modern: customer memilih layanan, professional, tanggal, jam, masuk review, mengunci slot sementara, lalu melakukan konfirmasi atau pembayaran.
 
@@ -154,7 +154,7 @@ draft
   -> no_show
 ```
 
-Untuk implementasi Laravel saat ini, mapping bisa seperti ini:
+Untuk implementasi Go saat ini, mapping bisa seperti ini:
 
 | Konsep | Status Saat Ini | Status Ideal |
 | --- | --- | --- |
@@ -1085,7 +1085,7 @@ provider_staffs(branch_id, status, current_status)
 staff_schedules(provider_staff_id, day_of_week, is_available)
 ```
 
-Jika memakai MySQL, index gabungan yang paling penting:
+Jika memakai PostgreSQL, index gabungan yang paling penting:
 
 ```sql
 CREATE INDEX bookings_staff_date_status_idx

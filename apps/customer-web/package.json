@@ -6,7 +6,8 @@
     "scripts": {
         "dev": "next dev -H 0.0.0.0 -p 5174",
         "build": "next build",
-        "start": "next start -H 0.0.0.0 -p 5174"
+        "start": "next start -H 0.0.0.0 -p 5174",
+        "test": "node --test"
     },
     "dependencies": {
         "framer-motion": "^12.40.0",

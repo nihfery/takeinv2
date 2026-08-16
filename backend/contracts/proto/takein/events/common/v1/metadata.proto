@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package takein.events.common.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/events/common/v1;eventscommonv1";
+
+import "google/protobuf/timestamp.proto";
+
+message EventMetadata {
+  string event_id = 1;
+  int32 event_version = 2;
+  google.protobuf.Timestamp occurred_at = 3;
+  string producer = 4;
+  string correlation_id = 5;
+  string causation_id = 6;
+  string traceparent = 7;
+  string aggregate_id = 8;
+}
+

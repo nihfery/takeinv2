@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package takein.events.payment.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/events/payment/v1;paymenteventsv1";
+
+import "takein/events/common/v1/metadata.proto";
+
+message PaymentChanged {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string payment_id = 2;
+  string booking_id = 3;
+  string status = 4;
+  string change_type = 5;
+  int64 amount_minor_units = 6;
+  string currency = 7;
+  string customer_id = 8;
+  string subscription_id = 9;
+  string provider_id = 10;
+}

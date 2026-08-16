@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FreshNavigation } from '../../src/components/LandingPage.jsx';
-import { mockSalons, getFavoritesList, toggleFavoriteSalon } from '../../src/lib/mock-state.js';
-import { getPublicBranches } from '../../src/lib/auth-api.js';
+import { saveFavoritesList } from '../../src/lib/mock-state.js';
+import { getCustomerFavorites, getPublicBranches, removeCustomerFavorite } from '../../src/lib/auth-api.js';
 import { PROVIDER_FRONTEND_URL } from '../../src/lib/app-urls.js';
 import { getSalonPath } from '../../src/lib/salon-routes.js';
 import { Star, MapPin, Heart, ArrowRight, HeartCrack } from 'lucide-react';
@@ -16,24 +16,25 @@ export default function FavoritesPage() {
     const [error, setError] = useState('');
 
     const loadFavorites = async () => {
-        const favIds = getFavoritesList();
         setError('');
 
         try {
-            const backendSalons = await getPublicBranches();
-            const salons = [...backendSalons, ...mockSalons];
+            const [favIds, salons] = await Promise.all([
+                getCustomerFavorites(),
+                getPublicBranches(),
+            ]);
+            saveFavoritesList(favIds);
             const savedSalons = favIds
                 .map((favoriteId) => salons.find((salon) => String(salon.id) === String(favoriteId)))
                 .filter(Boolean);
 
             setFavorites(savedSalons);
         } catch (loadError) {
-            const fallbackSalons = mockSalons.filter((salon) => (
-                favIds.some((favoriteId) => String(favoriteId) === String(salon.id))
-            ));
-
-            setFavorites(fallbackSalons);
+            setFavorites([]);
             setError(loadError?.message || 'Daftar favorit belum dapat dimuat.');
+            if (loadError?.status === 401) {
+                router.replace('/auth?next=/favorites');
+            }
         } finally {
             setLoading(false);
         }
@@ -43,9 +44,16 @@ export default function FavoritesPage() {
         loadFavorites();
     }, []);
 
-    const handleUnfavorite = (salonId) => {
-        toggleFavoriteSalon(salonId);
+    const handleUnfavorite = async (salonId) => {
+        const previous = favorites;
         setFavorites((current) => current.filter((salon) => String(salon.id) !== String(salonId)));
+        try {
+            await removeCustomerFavorite(salonId);
+            saveFavoritesList(previous.filter((salon) => String(salon.id) !== String(salonId)).map((salon) => salon.id));
+        } catch (removeError) {
+            setFavorites(previous);
+            setError(removeError?.message || 'Favorit belum berhasil dihapus.');
+        }
     };
 
     return (

@@ -1,5 +1,4 @@
 const API_BASE = '/api';
-const SANCTUM_BASE = '/sanctum';
 const TOKEN_KEY = 'salonku_api_token';
 const ACTIVITY_CACHE_KEY = 'salonku_customer_activity_cache';
 const ACTIVITY_SUMMARY_CACHE_KEY = 'salonku_customer_activity_summary_cache';
@@ -7,7 +6,6 @@ const ACTIVITY_CACHE_TTL = 30000;
 
 let customerActivityRequest = null;
 let customerActivitySummaryRequest = null;
-let csrfCookieRequest = null;
 const AVAILABILITY_CACHE_TTL = 5000;
 const ELIGIBLE_STAFF_CACHE_TTL = 15000;
 const availabilityCache = new Map();
@@ -172,20 +170,10 @@ function csrfToken() {
 }
 
 async function ensureCsrfCookie({ force = false } = {}) {
-    if (!force && csrfToken()) return;
-
-    csrfCookieRequest ??= fetch(`${SANCTUM_BASE}/csrf-cookie`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-            Accept: 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-        },
-    }).finally(() => {
-        csrfCookieRequest = null;
-    });
-
-    await csrfCookieRequest;
+    // Authentication is handled by the same-origin Next.js BFF. It keeps the
+    // Go access/refresh tokens in HttpOnly cookies and attaches Bearer tokens
+    // server-side, so browser JavaScript never needs a CSRF token or JWT.
+    void force;
 }
 
 async function parseJson(response) {
@@ -333,9 +321,25 @@ export async function fetchCurrentCustomer() {
         throw new Error(payload?.message || 'Session tidak aktif.');
     }
 
+    let user = payload.user;
+    const profileResponse = await fetch(`${API_BASE}/customer/profile`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    }).catch(() => null);
+    if (profileResponse?.ok) {
+        const profilePayload = await parseJson(profileResponse);
+        if (profilePayload?.data) {
+            user = { ...user, customer_profile: profilePayload.data };
+        }
+    }
+
     return {
-        user: payload.user,
-        profile: normalizeCustomerProfile(payload.user),
+        user,
+        profile: normalizeCustomerProfile(user),
     };
 }
 
@@ -1008,6 +1012,63 @@ export async function getPublicBranches() {
     return Array.isArray(payload?.data)
         ? payload.data.map(normalizePublicBranch)
         : [];
+}
+
+export async function getCustomerFavorites() {
+    const response = await fetch(`${API_BASE}/customer/favorites`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    });
+    const payload = await parseJson(response);
+    if (!response.ok) {
+        const error = new Error(payload?.message || 'Daftar favorit belum dapat dimuat.');
+        error.status = response.status;
+        throw error;
+    }
+    return Array.isArray(payload?.data)
+        ? payload.data.map(Number).filter((id) => Number.isInteger(id) && id > 0)
+        : [];
+}
+
+export async function addCustomerFavorite(branchId) {
+    const response = await fetch(`${API_BASE}/customer/favorites`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ branch_id: Number(branchId) }),
+    });
+    const payload = await parseJson(response);
+    if (!response.ok) {
+        const error = new Error(payload?.message || 'Salon belum berhasil disimpan.');
+        error.status = response.status;
+        throw error;
+    }
+    return payload?.data || { branch_id: Number(branchId) };
+}
+
+export async function removeCustomerFavorite(branchId) {
+    const response = await fetch(`${API_BASE}/customer/favorites/${encodeURIComponent(branchId)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    });
+    const payload = response.status === 204 ? null : await parseJson(response);
+    if (!response.ok) {
+        const error = new Error(payload?.message || 'Favorit belum berhasil dihapus.');
+        error.status = response.status;
+        throw error;
+    }
 }
 
 export async function getPublicCoupons() {

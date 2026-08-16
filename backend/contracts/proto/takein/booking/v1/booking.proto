@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package takein.booking.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/booking/v1;bookingv1";
+
+import "takein/common/v1/common.proto";
+
+service BookingService {
+  rpc GetBookingPaymentContext(GetBookingPaymentContextRequest) returns (GetBookingPaymentContextResponse);
+  rpc CheckReviewEligibility(CheckReviewEligibilityRequest) returns (CheckReviewEligibilityResponse);
+  rpc ApplyPaymentState(ApplyPaymentStateRequest) returns (ApplyPaymentStateResponse);
+}
+
+message GetBookingPaymentContextRequest {
+  string booking_id = 1;
+  string customer_id = 2;
+  takein.common.v1.RequestMetadata metadata = 3;
+  string booking_code = 4;
+}
+
+message GetBookingPaymentContextResponse {
+  string booking_id = 1;
+  string booking_code = 2;
+  string customer_id = 3;
+  takein.common.v1.Money amount_due = 4;
+  string status = 5;
+  string provider_id = 6;
+  string branch_id = 7;
+  string payment_type = 8;
+  string payment_channel = 9;
+}
+
+message CheckReviewEligibilityRequest {
+  string booking_id = 1;
+  string customer_id = 2;
+  takein.common.v1.RequestMetadata metadata = 3;
+  string booking_code = 4;
+}
+
+message CheckReviewEligibilityResponse {
+  bool eligible = 1;
+  string branch_id = 2;
+  repeated string staff_ids = 3;
+  string reason = 4;
+  string booking_id = 5;
+}
+
+message ApplyPaymentStateRequest {
+  string event_id = 1;
+  string booking_id = 2;
+  string payment_id = 3;
+  string payment_status = 4;
+  takein.common.v1.RequestMetadata metadata = 5;
+  int64 amount_minor_units = 6;
+  string currency = 7;
+}
+
+message ApplyPaymentStateResponse {
+  bool applied = 1;
+  string booking_status = 2;
+}

@@ -1,0 +1,47 @@
+name: Admin Web
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "apps/admin-web/**"
+      - ".github/workflows/admin-web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: admin-web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/admin-web
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/admin-web/package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Build admin web
+        env:
+          GO_API_BASE_URL: https://api.example.invalid
+          GO_IDENTITY_URL: https://identity.example.invalid
+          NEXT_PUBLIC_ADMIN_WEB_URL: https://admin.example.invalid
+        run: npm run build

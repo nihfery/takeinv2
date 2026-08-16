@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package takein.provider.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/provider/v1;providerv1";
+
+import "takein/common/v1/common.proto";
+
+service ProviderService {
+  rpc GetProviderReadiness(GetProviderReadinessRequest) returns (GetProviderReadinessResponse);
+  rpc ValidateBranchScope(ValidateBranchScopeRequest) returns (ValidateBranchScopeResponse);
+  rpc ResolveEligibleStaff(ResolveEligibleStaffRequest) returns (ResolveEligibleStaffResponse);
+}
+
+message GetProviderReadinessRequest {
+  string provider_id = 1;
+  takein.common.v1.RequestMetadata metadata = 2;
+}
+
+message GetProviderReadinessResponse {
+  bool ready = 1;
+  string verification_status = 2;
+  string onboarding_status = 3;
+  bool entitled = 4;
+}
+
+message ValidateBranchScopeRequest {
+  string actor_id = 1;
+  string provider_id = 2;
+  string branch_id = 3;
+  string permission = 4;
+  takein.common.v1.RequestMetadata metadata = 5;
+}
+
+message ValidateBranchScopeResponse {
+  bool allowed = 1;
+  string reason = 2;
+}
+
+message ResolveEligibleStaffRequest {
+  string provider_id = 1;
+  string branch_id = 2;
+  repeated string service_ids = 3;
+  takein.common.v1.TimeRange slot = 4;
+  takein.common.v1.RequestMetadata metadata = 5;
+}
+
+message ResolveEligibleStaffResponse {
+  repeated Staff staff = 1;
+}
+
+message Staff {
+  string staff_id = 1;
+  string branch_id = 2;
+  repeated string service_ids = 3;
+  string status = 4;
+}
+

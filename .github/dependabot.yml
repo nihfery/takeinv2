@@ -1,0 +1,37 @@
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directories:
+      - /backend/gen/go
+      - /backend/libs/go
+      - /backend/services/identity-service
+      - /backend/services/customer-service
+      - /backend/services/provider-service
+      - /backend/services/catalog-service
+      - /backend/services/booking-service
+      - /backend/services/payment-service
+      - /backend/services/billing-service
+      - /backend/services/notification-service
+      - /backend/services/chat-service
+      - /backend/services/media-service
+      - /backend/services/audit-service
+      - /backend/tools/contract-check
+      - /backend/tools/kafka-admin
+      - /backend/tools/schema-migrator
+      - /backend/tools/testdb
+      - /backend/tests/e2e
+    schedule: {interval: weekly, day: monday}
+    open-pull-requests-limit: 10
+    groups:
+      go-dependencies:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directories:
+      - /
+      - /backend
+    schedule: {interval: weekly, day: monday}
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: {interval: weekly, day: monday}

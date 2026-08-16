@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package takein.events.identity.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/events/identity/v1;identityeventsv1";
+
+import "takein/events/common/v1/metadata.proto";
+
+message UserRegistered {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string user_id = 2;
+  string role = 3;
+  string name = 4;
+  string username = 5;
+  string email = 6;
+  string phone_number = 7;
+  string gender = 8;
+  string date_of_birth = 9;
+  string religion = 10;
+  string allergies = 11;
+  string provider_category = 12;
+}
+
+message UserDisabled {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string user_id = 2;
+}
+
+message UserStatusChanged {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string user_id = 2;
+  string status = 3;
+}
+
+message UserProfileUpdated {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string user_id = 2;
+  string name = 3;
+  string username = 4;
+  string email = 5;
+}

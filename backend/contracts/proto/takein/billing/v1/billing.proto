@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package takein.billing.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/billing/v1;billingv1";
+
+import "takein/common/v1/common.proto";
+
+service BillingService {
+  rpc GetEntitlement(GetEntitlementRequest) returns (GetEntitlementResponse);
+}
+
+message GetEntitlementRequest {
+  string provider_id = 1;
+  takein.common.v1.RequestMetadata metadata = 2;
+}
+
+message GetEntitlementResponse {
+  bool entitled = 1;
+  string source = 2;
+  string status = 3;
+  int32 max_branches = 4;
+  string expires_at = 5;
+}
+

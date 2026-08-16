@@ -1,11 +1,11 @@
-# Notification domain
+﻿# Notification domain
 
-`Notification` owns `app_notifications`, unread-count behavior, Blade
+`Notification` owns `app_notifications`, unread-count behavior, Next.js
 notification endpoints, and `UserNotificationSent` broadcast events.
 
 Admin/provider users may list and mark only their own notification records.
 Notifications link to internal application URLs and must not contain raw
-secrets/private object paths. Broadcast is server-originated via Reverb; client
+secrets/private object paths. Broadcast is server-originated via WebSocket; client
 events are disabled.
 
 Notification delivery is an asynchronous side effect. Its failure must be

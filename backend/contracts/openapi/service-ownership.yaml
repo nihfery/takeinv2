@@ -1,0 +1,33 @@
+version: 1
+rules:
+  - {service: identity-service, path_regex: '^/api/auth(?:/|$)'}
+  - {service: identity-service, path_regex: '^/api/provider/profile/password$'}
+  - {service: payment-service, path_regex: '^/api/customer/bookings/(?:[^/]+|code/[^/]+)/payment(?:/|$)'}
+  - {service: payment-service, path_regex: '^/api/midtrans/notification$'}
+  - {service: payment-service, path_regex: '^/api/provider/payments(?:/|$)'}
+  - {service: billing-service, path_regex: '^/api/provider/subscriptions(?:/|$)'}
+  - {service: booking-service, path_regex: '^/api/customer/booking(?:/|$)'}
+  - {service: booking-service, path_regex: '^/api/customer/bookings$'}
+  - {service: booking-service, path_regex: '^/api/customer/bookings/[^/]+$'}
+  - {service: booking-service, path_regex: '^/api/customer/bookings/[^/]+/(?:finalize|reschedule|cancel)$'}
+  - {service: booking-service, path_regex: '^/api/customer/bookings/[^/]+/hold/extend$'}
+  - {service: booking-service, path_regex: '^/api/customer/bookings/code/[^/]+$'}
+  - {service: booking-service, path_regex: '^/api/customer/graphql$'}
+  - {service: booking-service, path_regex: '^/api/admin/bookings(?:/|$)'}
+  - {service: booking-service, path_regex: '^/api/provider/bookings(?:/|$)'}
+  - {service: customer-service, path_regex: '^/api/customer/(?:profile|activity|favorites)(?:/|$)'}
+  - {service: customer-service, path_regex: '^/api/customer/bookings/code/[^/]+/review$'}
+  - {service: customer-service, path_regex: '^/api/admin/customers(?:/|$)'}
+  - {service: customer-service, path_regex: '^/api/provider/(?:customers|reviews)(?:/|$)'}
+  - {service: provider-service, path_regex: '^/api/provider/profile$'}
+  - {service: provider-service, path_regex: '^/api/provider/profile/documents(?:/|$)'}
+  - {service: provider-service, path_regex: '^/api/provider/(?:staff|branches|roles-permissions)(?:/|$)'}
+  - {service: provider-service, path_regex: '^/api/admin/providers(?:/|$)'}
+  - {service: catalog-service, path_regex: '^/api/provider/services(?:/|$)'}
+  - {service: catalog-service, path_regex: '^/api/admin/(?:service-categories|services|coupons)(?:/|$)'}
+  - {service: catalog-service, path_regex: '^/api/(?:categories|locations|reviews|branches|staff|services|providers|coupons)(?:/|$)'}
+  - {service: catalog-service, path_regex: '^/api/(?:health|readiness)$'}
+  - {service: notification-service, path_regex: '^/api/notifications(?:/|$)'}
+  - {service: chat-service, path_regex: '^/api/chat(?:/|$)'}
+  - {service: media-service, path_regex: '^/api/media(?:/|$)'}
+  - {service: audit-service, path_regex: '^/api/admin/audit(?:/|$)'}

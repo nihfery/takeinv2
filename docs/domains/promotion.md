@@ -1,6 +1,6 @@
 # Promotion domain
 
-`Promotion` owns `coupons`, admin API/Blade coupon CRUD, public coupon listing,
+`Promotion` owns `coupons`, admin API/Next.js coupon CRUD, public coupon listing,
 and rate-limited coupon validation through `CouponService`.
 
 Coupon applicability includes status, date/usage, product/service constraints,

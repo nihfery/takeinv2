@@ -1,6 +1,7 @@
 import { createPublicRouteCode, getSalonSlug } from './salon-routes.js';
 import {
     branchMatchesTaxonomy,
+    buildServiceTaxonomy,
     fallbackServiceTaxonomy,
     hasTaxonomyFilter,
     normalizeCategorySlug,
@@ -168,7 +169,7 @@ function publicEnv(key, fallback = '') {
 }
 
 function backendUrl() {
-    return normalizeUrl(publicEnv('BACKEND_URL', 'http://127.0.0.1:8000'));
+    return normalizeUrl(process.env.GO_API_BASE_URL || publicEnv('BACKEND_URL', 'http://127.0.0.1:8088'));
 }
 
 function apiBaseUrl() {
@@ -176,25 +177,24 @@ function apiBaseUrl() {
 }
 
 function internalApiBaseUrl() {
-    const backendProxyUrl = normalizeUrl(process.env.BACKEND_PROXY_URL);
+    const backendProxyUrl = normalizeUrl(process.env.GO_API_BASE_URL);
 
     return backendProxyUrl ? `${backendProxyUrl}/api` : '';
 }
 
 function demoCatalogFallbackEnabled() {
-    return process.env.NODE_ENV !== 'production' && !normalizeUrl(process.env.BACKEND_PROXY_URL);
+    return process.env.NODE_ENV !== 'production' && process.env.TAKEIN_DEMO_CATALOG_FALLBACK !== 'false';
 }
 
 function apiRequestUrls(path, params = {}) {
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     const bases = [
         // Server-side catalog requests run inside the Next container, where a
-        // public loopback URL points back to Next rather than to Laravel.
+        // public loopback URL points back to Next rather than to the Go edge.
         internalApiBaseUrl(),
         apiBaseUrl(),
-        'http://127.0.0.1:8000/api',
-        'http://localhost:8000/api',
-        'http://127.0.0.1:8001/api',
+        'http://127.0.0.1:8088/api',
+        'http://localhost:8088/api',
     ].map(normalizeUrl).filter((url, index, urls) => url && urls.indexOf(url) === index);
 
     return bases.map((base) => {
@@ -216,7 +216,7 @@ async function fetchCollection(path, params = {}, { revalidate = 0 } = {}) {
             const response = await fetch(url, {
                 headers: { Accept: 'application/json' },
                 // Cache responses in Next's Data Cache and revalidate periodically so
-                // repeated searches do not re-hit Laravel on every request.
+                // repeated searches do not re-hit catalog-service on every request.
                 ...(revalidate > 0 ? { next: { revalidate } } : { cache: 'no-store' }),
                 signal: AbortSignal.timeout(2500),
             });
@@ -226,7 +226,7 @@ async function fetchCollection(path, params = {}, { revalidate = 0 } = {}) {
             const payload = await response.json();
             return Array.isArray(payload?.data) ? payload.data : [];
         } catch {
-            // Keep the landing resilient when the Laravel API is not running.
+            // Keep the landing resilient when the Go edge is not running.
         }
     }
 
@@ -256,15 +256,18 @@ export async function getBranchInitialDetail(branchId) {
     const numericBranchId = Number(branchId);
 
     if (!Number.isInteger(numericBranchId) || numericBranchId <= 0) {
-        return { staff: [], reviews: [], summary: null };
+        return { services: [], servicesLoaded: false, staff: [], reviews: [], summary: null };
     }
 
-    const [staffPayload, reviewsPayload] = await Promise.all([
+    const [servicesPayload, staffPayload, reviewsPayload] = await Promise.all([
+        fetchPayload(`/branches/${numericBranchId}/services`),
         fetchPayload(`/branches/${numericBranchId}/staff`),
         fetchPayload(`/branches/${numericBranchId}/reviews`, { per_page: 100 }),
     ]);
 
     return {
+        services: Array.isArray(servicesPayload?.data) ? servicesPayload.data : [],
+        servicesLoaded: Boolean(servicesPayload && Array.isArray(servicesPayload?.data)),
         staff: Array.isArray(staffPayload?.data) ? staffPayload.data : [],
         reviews: Array.isArray(reviewsPayload?.data) ? reviewsPayload.data : [],
         summary: reviewsPayload?.summary || null,
@@ -279,6 +282,43 @@ function serviceCategoryName(category) {
     }
 
     return '';
+}
+
+function catalogCategoryIndex(categories = []) {
+    return new Map((Array.isArray(categories) ? categories : []).map((category) => [
+        String(category?.id ?? category?.category_id ?? ''),
+        category,
+    ]));
+}
+
+function normalizeCatalogService(service, index, categoriesByID) {
+    const categoryID = service?.category_id ?? service?.service_category_id ?? null;
+    const category = categoriesByID.get(String(categoryID ?? '')) || {};
+    const parentID = service?.main_category_id ?? category?.parent_id ?? category?.parentId ?? null;
+    const parent = categoriesByID.get(String(parentID ?? '')) || {};
+    const categoryName = service?.category_name
+        || service?.category_text
+        || category?.name
+        || service?.category
+        || 'Featured';
+
+    return {
+        ...service,
+        id: service?.id ?? service?.service_id ?? service?.slug ?? `service-${index}`,
+        slug: service?.slug || '',
+        code: service?.code || '',
+        name: service?.name || service?.title || `Service ${index + 1}`,
+        title: service?.title || service?.name || `Service ${index + 1}`,
+        category: categoryName,
+        categoryId: categoryID,
+        categorySlug: service?.category_slug || category?.slug || '',
+        mainCategoryId: parentID,
+        mainCategorySlug: service?.main_category_slug || parent?.slug || '',
+        description: service?.description || service?.desc || '',
+        price: Number(service?.price || 0),
+        minimum_duration: Number(service?.minimum_duration || 0),
+        estimated_duration: Number(service?.estimated_duration || service?.duration || 30),
+    };
 }
 
 function resolveAssetUrl(path) {
@@ -342,19 +382,27 @@ function fallbackCoordinatesFor(city, state, index) {
     };
 }
 
-function normalizeBranch(branch, index) {
+function normalizeBranch(branch, index, categoriesByID = new Map()) {
     const rawServiceCategories = branch?.serviceCategories || branch?.service_categories || [];
     const rawServiceTitles = branch?.serviceTitles || branch?.service_titles || [];
     const serviceCategories = Array.isArray(rawServiceCategories)
         ? rawServiceCategories.map(serviceCategoryName).filter(Boolean)
         : [];
     const serviceTitles = Array.isArray(rawServiceTitles) ? rawServiceTitles.filter(Boolean) : [];
-    const categories = [...new Set([...serviceCategories, ...serviceTitles])];
     const image = branch?.image_url || branch?.image || branch?.photo || branch?.coverImage || branch?.cover_image || branch?.thumbnail || branch?.avatar;
     const providerName = typeof branch?.provider === 'string'
         ? branch.provider
         : branch?.provider?.name || branch?.provider_name || '';
     const rawServices = Array.isArray(branch?.services) ? branch.services : [];
+    const services = rawServices.map((service, serviceIndex) => (
+        normalizeCatalogService(service, serviceIndex, categoriesByID)
+    ));
+    const categories = [...new Set([
+        ...serviceCategories,
+        ...serviceTitles,
+        ...services.map((service) => service.category),
+    ].filter(Boolean))];
+    const servicePrices = services.map((service) => Number(service.price)).filter((price) => price > 0);
 
     // Gallery of all branch photos (used by the hover preview auto-slider).
     const rawGallery = branch?.image_urls || branch?.images || branch?.gallery_images || branch?.gallery || [];
@@ -378,39 +426,32 @@ function normalizeBranch(branch, index) {
         : fallbackCoordinatesFor(city, state, index);
 
     return {
-        id: branch?.id || branch?.slug || `branch-${index}`,
+        id: branch?.id ?? branch?.branch_id ?? branch?.slug ?? `branch-${index}`,
         slug: getSalonSlug(branch),
         publicCode: createPublicRouteCode(branch),
         name: branch?.name || branch?.branch_name || branch?.businessName || branch?.business_name || 'YouYaku Studio',
         provider: providerName || categories.slice(0, 2).join(', ') || 'Salon Kecantikan',
         city,
         state,
-        minPrice: Number(branch?.minPrice || branch?.min_price || branch?.priceFrom || branch?.price_from || branch?.lowestPrice || branch?.lowest_price || 0),
+        minPrice: Number(
+            branch?.minPrice
+            ?? branch?.min_price
+            ?? branch?.priceFrom
+            ?? branch?.price_from
+            ?? branch?.lowestPrice
+            ?? branch?.lowest_price
+            ?? (servicePrices.length ? Math.min(...servicePrices) : 0)
+        ),
         rating: backendRating !== undefined && backendRating !== null
             ? Number(backendRating)
             : 0,
         reviews: backendReviewCount !== undefined && backendReviewCount !== null
             ? Number(backendReviewCount)
             : 0,
-        servicesCount: Number(branch?.servicesCount ?? branch?.services_count ?? branch?.serviceCount ?? branch?.service_count ?? categories.length),
+        servicesCount: Number(branch?.servicesCount ?? branch?.services_count ?? branch?.serviceCount ?? branch?.service_count ?? services.length),
         staffCount: Number(branch?.staffCount ?? branch?.staffs_count ?? branch?.staff_count ?? branch?.teamCount ?? branch?.team_count ?? 0),
         serviceCategories: categories.length ? categories : ['Salon Kecantikan'],
-        services: rawServices.map((service, serviceIndex) => ({
-            id: service?.id || service?.slug || `service-${serviceIndex}`,
-            slug: service?.slug || '',
-            code: service?.code || '',
-            name: service?.name || service?.title || `Service ${serviceIndex + 1}`,
-            title: service?.title || service?.name || `Service ${serviceIndex + 1}`,
-            category: service?.category_name || service?.category || 'Featured',
-            categoryId: service?.category_id || service?.service_category_id || null,
-            categorySlug: service?.category_slug || '',
-            mainCategoryId: service?.main_category_id || null,
-            mainCategorySlug: service?.main_category_slug || '',
-            description: service?.description || service?.desc || '',
-            price: Number(service?.price || 0),
-            minimum_duration: Number(service?.minimum_duration || 0),
-            estimated_duration: Number(service?.estimated_duration || service?.duration || 30),
-        })),
+        services,
         image: coverImage,
         images: gallery,
         tag: branch?.tag || (index % 3 === 1 ? 'Baru' : index % 3 === 2 ? 'Tren' : 'Unggulan'),
@@ -430,6 +471,13 @@ function normalizeBranch(branch, index) {
             ? branch.working_days
             : (Array.isArray(branch?.workingDays) ? branch.workingDays : []),
     };
+}
+
+export function normalizeCatalogBranches(branches = [], categories = []) {
+    const categoriesByID = catalogCategoryIndex(categories);
+    return (Array.isArray(branches) ? branches : []).map((branch, index) => (
+        normalizeBranch(branch, index, categoriesByID)
+    ));
 }
 
 function compactSearchBranch(branch) {
@@ -483,7 +531,7 @@ function normalizeLandingReview(review, index) {
     const rating = Math.min(5, Math.max(0, Number(review?.rating || 0)));
 
     return {
-        id: review?.id || `review-${index}`,
+        id: review?.id ?? review?.review_id ?? `review-${index}`,
         rating,
         text: String(review?.comment || '').trim(),
         name: customerName,
@@ -499,15 +547,8 @@ const BRANCHES_TTL = 120;
 const META_TTL = 300;
 
 export async function getServiceTaxonomy() {
-    const categories = await fetchCollection('/categories', {
-        hierarchy: 1,
-        per_page: 100,
-    }, { revalidate: META_TTL });
-    const groups = categories.filter((category) => (
-        !category?.parent_id
-        && Array.isArray(category?.children)
-        && category.children.length > 0
-    ));
+    const categories = await fetchAllCategories();
+    const groups = buildServiceTaxonomy(categories);
 
     return groups.length ? groups : fallbackServiceTaxonomy;
 }
@@ -522,24 +563,32 @@ export async function getServiceCategory(categorySlug) {
 
 /**
  * Fetch the full branch list once (cached). Both the landing page and the search
- * page reuse this single cached response and filter client-side, so the Laravel
+ * page reuse this single cached response and filter client-side, so the Go API
  * API is queried at most once per revalidation window regardless of search terms.
  */
 async function fetchAllBranches() {
     return fetchCollection('/branches', { per_page: 100 }, { revalidate: BRANCHES_TTL });
 }
 
+async function fetchAllCategories() {
+    return fetchCollection('/categories', {
+        hierarchy: 1,
+        per_page: 100,
+    }, { revalidate: META_TTL });
+}
+
 export async function getLandingPayload() {
-    const [apiBranches, apiLocations, reviewsPayload] = await Promise.all([
+    const [apiBranches, apiLocations, apiCategories, reviewsPayload] = await Promise.all([
         fetchAllBranches(),
         fetchCollection('/locations', {}, { revalidate: META_TTL }),
+        fetchAllCategories(),
         fetchPayload('/reviews', { per_page: 25 }, { revalidate: BRANCHES_TTL }),
     ]);
 
     const branchSource = apiBranches.length
         ? apiBranches
         : (demoCatalogFallbackEnabled() ? fallbackBranches : []);
-    const normalizedBranches = branchSource.map(normalizeBranch);
+    const normalizedBranches = normalizeCatalogBranches(branchSource, apiCategories);
     const branches = normalizedBranches.slice(0, 16);
     const normalizedLocations = (apiLocations.length ? apiLocations : fallbackLocations)
         .map(normalizeLocation)
@@ -677,21 +726,22 @@ export async function getSearchPayload(filters = {}, { compact = false } = {}) {
     // Performance: instead of issuing a filtered branch query per search (which the
     // API cannot scope to a single branch for categories anyway), we reuse ONE cached
     // branch list and filter everything client-side. This makes search instant and the
-    // Laravel API is hit at most once per revalidation window, not on every keystroke.
+    // The Go API is hit at most once per revalidation window, not on every keystroke.
     const [apiBranches, apiLocations, apiCategories] = await Promise.all([
         fetchAllBranches(),
         fetchCollection('/locations', {}, { revalidate: META_TTL }),
-        fetchCollection('/categories', { per_page: 100 }, { revalidate: META_TTL }),
+        fetchAllCategories(),
     ]);
 
     const apiReachable = apiBranches.length > 0;
     // Full, unfiltered list so the client can re-filter instantly when the user
     // searches again, without a round-trip to the server (no browser refresh).
-    const normalized = (
+    const normalizedSource = (
         apiReachable
             ? apiBranches
             : (demoCatalogFallbackEnabled() ? fallbackBranches : [])
-    ).map(normalizeBranch);
+    );
+    const normalized = normalizeCatalogBranches(normalizedSource, apiCategories);
 
     // Service filter applies to both the result list and the map exploration set.
     const serviceFiltered = service

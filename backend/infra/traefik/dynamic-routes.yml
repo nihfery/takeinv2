@@ -1,0 +1,58 @@
+http:
+  routers:
+    takein-identity:
+      rule: "PathPrefix(`/api/auth`) || Path(`/api/provider/profile/password`)"
+      priority: 200
+      service: takein-identity
+    takein-payment:
+      rule: "PathRegexp(`^/api/customer/bookings/(?:[^/]+|code/[^/]+)/payment(?:/|$)`) || PathPrefix(`/api/provider/payments`) || Path(`/api/midtrans/notification`)"
+      priority: 210
+      service: takein-payment
+    takein-billing:
+      rule: "PathPrefix(`/api/provider/subscriptions`)"
+      priority: 205
+      service: takein-billing
+    takein-booking:
+      rule: "PathPrefix(`/api/customer/booking`) || Path(`/api/customer/bookings`) || PathRegexp(`^/api/customer/bookings/(?:[^/]+|code/[^/]+)(?:/(?:finalize|reschedule|cancel|hold/extend))?$`) || Path(`/api/customer/graphql`) || PathPrefix(`/api/provider/bookings`) || PathPrefix(`/api/admin/bookings`)"
+      priority: 190
+      service: takein-booking
+    takein-customer:
+      rule: "PathPrefix(`/api/customer/profile`) || PathPrefix(`/api/customer/activity`) || PathPrefix(`/api/customer/favorites`) || PathRegexp(`^/api/customer/bookings/code/[^/]+/review$`) || PathPrefix(`/api/provider/customers`) || PathPrefix(`/api/provider/reviews`) || PathPrefix(`/api/admin/customers`)"
+      priority: 220
+      service: takein-customer
+    takein-provider:
+      rule: "Path(`/api/provider/profile`) || PathPrefix(`/api/provider/profile/documents`) || PathPrefix(`/api/provider/staff`) || PathPrefix(`/api/provider/branches`) || PathPrefix(`/api/provider/roles-permissions`) || PathPrefix(`/api/admin/providers`)"
+      priority: 200
+      service: takein-provider
+    takein-catalog:
+      rule: "PathPrefix(`/api/provider/services`) || PathPrefix(`/api/admin/service-categories`) || PathPrefix(`/api/admin/services`) || PathPrefix(`/api/admin/coupons`) || PathRegexp(`^/api/(?:categories|locations|reviews|branches|staff|services|providers|coupons)(?:/|$)`) || Path(`/api/health`) || Path(`/api/readiness`)"
+      priority: 180
+      service: takein-catalog
+    takein-notification:
+      rule: "PathPrefix(`/api/notifications`)"
+      priority: 200
+      service: takein-notification
+    takein-chat:
+      rule: "PathPrefix(`/api/chat`)"
+      priority: 200
+      service: takein-chat
+    takein-media:
+      rule: "PathPrefix(`/api/media`)"
+      priority: 200
+      service: takein-media
+    takein-audit:
+      rule: "PathPrefix(`/api/admin/audit`)"
+      priority: 200
+      service: takein-audit
+  services:
+    takein-identity: {loadBalancer: {servers: [{url: "http://takein-identity-api:8080"}]}}
+    takein-provider: {loadBalancer: {servers: [{url: "http://takein-provider-api:8080"}]}}
+    takein-catalog: {loadBalancer: {servers: [{url: "http://takein-catalog-api:8080"}]}}
+    takein-booking: {loadBalancer: {servers: [{url: "http://takein-booking-api:8080"}]}}
+    takein-payment: {loadBalancer: {servers: [{url: "http://takein-payment-api:8080"}]}}
+    takein-billing: {loadBalancer: {servers: [{url: "http://takein-billing-api:8080"}]}}
+    takein-customer: {loadBalancer: {servers: [{url: "http://takein-customer-api:8080"}]}}
+    takein-notification: {loadBalancer: {servers: [{url: "http://takein-notification-api:8080"}]}}
+    takein-chat: {loadBalancer: {servers: [{url: "http://takein-chat-api:8080"}]}}
+    takein-media: {loadBalancer: {servers: [{url: "http://takein-media-api:8080"}]}}
+    takein-audit: {loadBalancer: {servers: [{url: "http://takein-audit-api:8080"}]}}

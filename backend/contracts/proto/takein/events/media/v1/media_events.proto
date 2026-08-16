@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package takein.events.media.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/events/media/v1;mediaeventsv1";
+
+import "takein/events/common/v1/metadata.proto";
+
+message MediaChanged {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string object_id = 2;
+  string owner_type = 3;
+  string owner_id = 4;
+  string purpose = 5;
+  string status = 6;
+  string change_type = 7;
+}

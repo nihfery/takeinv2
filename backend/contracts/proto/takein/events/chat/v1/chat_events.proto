@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package takein.events.chat.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/events/chat/v1;chateventsv1";
+
+import "takein/events/common/v1/metadata.proto";
+
+message ChatChanged {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string thread_id = 2;
+  string message_id = 3;
+  string status = 4;
+  string change_type = 5;
+}

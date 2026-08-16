@@ -1,0 +1,387 @@
+# Generated from validated OpenAPI ownership; do not edit by hand.
+version: 1
+routes:
+    - service: billing-service
+      method: GET
+      path: /api/provider/subscriptions
+    - service: billing-service
+      method: POST
+      path: /api/provider/subscriptions/plans/{plan}/purchase
+    - service: booking-service
+      method: GET
+      path: /api/admin/bookings
+    - service: booking-service
+      method: GET
+      path: /api/admin/bookings/{booking}
+    - service: booking-service
+      method: PATCH
+      path: /api/admin/bookings/{booking}/status
+    - service: booking-service
+      method: POST
+      path: /api/customer/booking/check-availability
+    - service: booking-service
+      method: POST
+      path: /api/customer/booking/eligible-staff
+    - service: booking-service
+      method: POST
+      path: /api/customer/booking/interaction
+    - service: booking-service
+      method: GET
+      path: /api/customer/bookings
+    - service: booking-service
+      method: POST
+      path: /api/customer/bookings
+    - service: booking-service
+      method: GET
+      path: /api/customer/bookings/code/{bookingCode}
+    - service: booking-service
+      method: GET
+      path: /api/customer/bookings/{booking}
+    - service: booking-service
+      method: PATCH
+      path: /api/customer/bookings/{booking}/cancel
+    - service: booking-service
+      method: POST
+      path: /api/customer/bookings/{booking}/finalize
+    - service: booking-service
+      method: POST
+      path: /api/customer/bookings/{booking}/hold/extend
+    - service: booking-service
+      method: PATCH
+      path: /api/customer/bookings/{booking}/reschedule
+    - service: booking-service
+      method: POST
+      path: /api/customer/graphql
+    - service: booking-service
+      method: GET
+      path: /api/provider/bookings
+    - service: booking-service
+      method: GET
+      path: /api/provider/bookings/calendar
+    - service: booking-service
+      method: GET
+      path: /api/provider/bookings/queue
+    - service: booking-service
+      method: POST
+      path: /api/provider/bookings/walk-in
+    - service: booking-service
+      method: POST
+      path: /api/provider/bookings/walk-in/availability
+    - service: booking-service
+      method: POST
+      path: /api/provider/bookings/{booking}/call
+    - service: booking-service
+      method: POST
+      path: /api/provider/bookings/{booking}/cancel
+    - service: booking-service
+      method: POST
+      path: /api/provider/bookings/{booking}/check-in
+    - service: booking-service
+      method: POST
+      path: /api/provider/bookings/{booking}/complete
+    - service: booking-service
+      method: POST
+      path: /api/provider/bookings/{booking}/no-show
+    - service: booking-service
+      method: POST
+      path: /api/provider/bookings/{booking}/start
+    - service: catalog-service
+      method: GET
+      path: /api/admin/coupons
+    - service: catalog-service
+      method: POST
+      path: /api/admin/coupons
+    - service: catalog-service
+      method: DELETE
+      path: /api/admin/coupons/{coupon}
+    - service: catalog-service
+      method: GET
+      path: /api/admin/coupons/{coupon}
+    - service: catalog-service
+      method: PATCH
+      path: /api/admin/coupons/{coupon}
+    - service: catalog-service
+      method: PUT
+      path: /api/admin/coupons/{coupon}
+    - service: catalog-service
+      method: GET
+      path: /api/admin/service-categories
+    - service: catalog-service
+      method: POST
+      path: /api/admin/service-categories
+    - service: catalog-service
+      method: DELETE
+      path: /api/admin/service-categories/{serviceCategory}
+    - service: catalog-service
+      method: GET
+      path: /api/admin/service-categories/{serviceCategory}
+    - service: catalog-service
+      method: PATCH
+      path: /api/admin/service-categories/{serviceCategory}
+    - service: catalog-service
+      method: PUT
+      path: /api/admin/service-categories/{serviceCategory}
+    - service: catalog-service
+      method: PATCH
+      path: /api/admin/service-categories/{serviceCategory}/toggle-featured
+    - service: catalog-service
+      method: PATCH
+      path: /api/admin/service-categories/{serviceCategory}/toggle-status
+    - service: catalog-service
+      method: GET
+      path: /api/admin/services
+    - service: catalog-service
+      method: GET
+      path: /api/admin/services/{service}
+    - service: catalog-service
+      method: PATCH
+      path: /api/admin/services/{service}/toggle-status
+    - service: catalog-service
+      method: GET
+      path: /api/branches
+    - service: catalog-service
+      method: GET
+      path: /api/branches/{branch}
+    - service: catalog-service
+      method: GET
+      path: /api/branches/{branch}/reviews
+    - service: catalog-service
+      method: GET
+      path: /api/branches/{branch}/services
+    - service: catalog-service
+      method: GET
+      path: /api/branches/{branch}/staff
+    - service: catalog-service
+      method: GET
+      path: /api/categories
+    - service: catalog-service
+      method: GET
+      path: /api/coupons
+    - service: catalog-service
+      method: POST
+      path: /api/coupons/validate
+    - service: catalog-service
+      method: GET
+      path: /api/health
+    - service: catalog-service
+      method: GET
+      path: /api/locations
+    - service: catalog-service
+      method: GET
+      path: /api/provider/services
+    - service: catalog-service
+      method: POST
+      path: /api/provider/services
+    - service: catalog-service
+      method: DELETE
+      path: /api/provider/services/{service}
+    - service: catalog-service
+      method: GET
+      path: /api/provider/services/{service}
+    - service: catalog-service
+      method: PATCH
+      path: /api/provider/services/{service}
+    - service: catalog-service
+      method: PUT
+      path: /api/provider/services/{service}
+    - service: catalog-service
+      method: PUT
+      path: /api/provider/services/{service}/branch
+    - service: catalog-service
+      method: PUT
+      path: /api/provider/services/{service}/gallery
+    - service: catalog-service
+      method: PATCH
+      path: /api/provider/services/{service}/toggle-status
+    - service: catalog-service
+      method: GET
+      path: /api/providers
+    - service: catalog-service
+      method: GET
+      path: /api/readiness
+    - service: catalog-service
+      method: GET
+      path: /api/reviews
+    - service: catalog-service
+      method: GET
+      path: /api/services
+    - service: catalog-service
+      method: GET
+      path: /api/services/{service}
+    - service: catalog-service
+      method: GET
+      path: /api/staff/{staff}
+    - service: customer-service
+      method: GET
+      path: /api/admin/customers
+    - service: customer-service
+      method: DELETE
+      path: /api/admin/customers/{customer}
+    - service: customer-service
+      method: GET
+      path: /api/admin/customers/{customer}
+    - service: customer-service
+      method: PATCH
+      path: /api/admin/customers/{customer}/toggle-status
+    - service: customer-service
+      method: GET
+      path: /api/customer/activity
+    - service: customer-service
+      method: GET
+      path: /api/customer/activity/summary
+    - service: customer-service
+      method: POST
+      path: /api/customer/bookings/code/{bookingCode}/review
+    - service: customer-service
+      method: GET
+      path: /api/customer/favorites
+    - service: customer-service
+      method: POST
+      path: /api/customer/favorites
+    - service: customer-service
+      method: DELETE
+      path: /api/customer/favorites/{branch}
+    - service: customer-service
+      method: GET
+      path: /api/customer/profile
+    - service: customer-service
+      method: PUT
+      path: /api/customer/profile
+    - service: customer-service
+      method: GET
+      path: /api/provider/customers
+    - service: customer-service
+      method: GET
+      path: /api/provider/reviews
+    - service: identity-service
+      method: POST
+      path: /api/auth/login
+    - service: identity-service
+      method: POST
+      path: /api/auth/logout
+    - service: identity-service
+      method: GET
+      path: /api/auth/me
+    - service: identity-service
+      method: POST
+      path: /api/auth/register/customer
+    - service: identity-service
+      method: POST
+      path: /api/auth/register/provider
+    - service: identity-service
+      method: PUT
+      path: /api/provider/profile/password
+    - service: payment-service
+      method: POST
+      path: /api/customer/bookings/code/{bookingCode}/payment/confirm
+    - service: payment-service
+      method: POST
+      path: /api/customer/bookings/{booking}/payment/charge
+    - service: payment-service
+      method: GET
+      path: /api/customer/bookings/{booking}/payment/status
+    - service: payment-service
+      method: POST
+      path: /api/midtrans/notification
+    - service: payment-service
+      method: GET
+      path: /api/provider/payments
+    - service: provider-service
+      method: GET
+      path: /api/admin/providers
+    - service: provider-service
+      method: DELETE
+      path: /api/admin/providers/{provider}
+    - service: provider-service
+      method: GET
+      path: /api/admin/providers/{provider}
+    - service: provider-service
+      method: PATCH
+      path: /api/admin/providers/{provider}/document-status
+    - service: provider-service
+      method: GET
+      path: /api/admin/providers/{provider}/documents/{document}
+    - service: provider-service
+      method: PATCH
+      path: /api/admin/providers/{provider}/toggle-status
+    - service: provider-service
+      method: GET
+      path: /api/provider/branches
+    - service: provider-service
+      method: POST
+      path: /api/provider/branches
+    - service: provider-service
+      method: DELETE
+      path: /api/provider/branches/{branch}
+    - service: provider-service
+      method: GET
+      path: /api/provider/branches/{branch}
+    - service: provider-service
+      method: PATCH
+      path: /api/provider/branches/{branch}
+    - service: provider-service
+      method: PUT
+      path: /api/provider/branches/{branch}
+    - service: provider-service
+      method: GET
+      path: /api/provider/branches/{branch}/preview
+    - service: provider-service
+      method: PUT
+      path: /api/provider/branches/{branch}/staff
+    - service: provider-service
+      method: GET
+      path: /api/provider/profile
+    - service: provider-service
+      method: PUT
+      path: /api/provider/profile
+    - service: provider-service
+      method: POST
+      path: /api/provider/profile/documents
+    - service: provider-service
+      method: GET
+      path: /api/provider/profile/documents/{document}
+    - service: provider-service
+      method: GET
+      path: /api/provider/roles-permissions
+    - service: provider-service
+      method: POST
+      path: /api/provider/roles-permissions
+    - service: provider-service
+      method: DELETE
+      path: /api/provider/roles-permissions/{role}
+    - service: provider-service
+      method: PUT
+      path: /api/provider/roles-permissions/{role}
+    - service: provider-service
+      method: PATCH
+      path: /api/provider/roles-permissions/{role}/toggle-status
+    - service: provider-service
+      method: GET
+      path: /api/provider/staff
+    - service: provider-service
+      method: POST
+      path: /api/provider/staff
+    - service: provider-service
+      method: DELETE
+      path: /api/provider/staff/{staff}
+    - service: provider-service
+      method: GET
+      path: /api/provider/staff/{staff}
+    - service: provider-service
+      method: PATCH
+      path: /api/provider/staff/{staff}
+    - service: provider-service
+      method: PUT
+      path: /api/provider/staff/{staff}
+    - service: provider-service
+      method: GET
+      path: /api/provider/staff/{staff}/schedules
+    - service: provider-service
+      method: PUT
+      path: /api/provider/staff/{staff}/schedules
+    - service: provider-service
+      method: GET
+      path: /api/provider/staff/{staff}/skills
+    - service: provider-service
+      method: PUT
+      path: /api/provider/staff/{staff}/skills

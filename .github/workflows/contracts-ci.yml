@@ -1,0 +1,30 @@
+name: Go contracts CI
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ["backend/contracts/**", "backend/gen/go/**", "backend/buf.*", "backend/tools/contract-check/**", "backend/tests/contract/**"]
+  push:
+    branches: [main]
+permissions: {contents: read}
+concurrency:
+  group: go-contracts-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {fetch-depth: 0, persist-credentials: false}
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with: {go-version: 1.26.6}
+      - uses: bufbuild/buf-setup-action@a47c93e0b1648d5651a065437926377d060baa99 # v1.50.0
+        with: {version: 1.72.0}
+      - run: go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
+      - run: go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.2
+      - run: buf lint
+      - run: buf breaking --against contracts/proto/baseline.binpb
+      - run: buf generate && git diff --exit-code -- gen/go
+      - run: go run ./tools/contract-check/cmd/contract-check

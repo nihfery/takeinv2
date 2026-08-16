@@ -16,30 +16,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  composer:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: backend/laravel-core
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up PHP and Composer
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
-        with:
-          php-version: "8.3"
-          coverage: none
-          tools: composer:v2
-
-      - name: Validate and audit locked PHP dependencies
-        run: |
-          composer validate --strict --no-check-publish
-          composer audit --locked --no-interaction
-
   npm:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -49,6 +25,8 @@ jobs:
         app:
           - apps/customer-web
           - apps/provider-landing
+          - apps/provider-console
+          - apps/admin-web
     defaults:
       run:
         working-directory: ${{ matrix.app }}

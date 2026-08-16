@@ -1,0 +1,17 @@
+version: 1
+defaults:
+  local_replication_factor: 1
+  production_replication_factor: 3
+  production_min_in_sync_replicas: 2
+topics:
+  - {name: takein.identity.events.v1, partitions: 3, key: user_id}
+  - {name: takein.customer.events.v1, partitions: 3, key: customer_id}
+  - {name: takein.provider.events.v1, partitions: 6, key: provider_id}
+  - {name: takein.catalog.events.v1, partitions: 6, key: service_or_coupon_id}
+  - {name: takein.booking.events.v1, partitions: 12, key: booking_id}
+  - {name: takein.payment.events.v1, partitions: 12, key: payment_id}
+  - {name: takein.billing.events.v1, partitions: 6, key: provider_or_subscription_id}
+  - {name: takein.notification.events.v1, partitions: 6, key: notification_id}
+  - {name: takein.chat.events.v1, partitions: 12, key: thread_id}
+  - {name: takein.media.events.v1, partitions: 3, key: object_id}
+  - {name: takein.audit.events.v1, partitions: 3, key: audit_id}

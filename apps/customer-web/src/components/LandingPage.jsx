@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { setSessionUser } from '../lib/mock-state.js';
 import { logoutCustomer } from '../lib/auth-api.js';
 import { getSalonPath } from '../lib/salon-routes.js';
-import { fallbackServiceTaxonomy, getCategoryPath } from '../lib/service-taxonomy.js';
+import { buildServiceTaxonomy, fallbackServiceTaxonomy, getCategoryPath } from '../lib/service-taxonomy.js';
 import { PROVIDER_FRONTEND_URL } from '../lib/app-urls.js';
 import { useCustomerSessionState } from './CustomerSessionProvider.jsx';
 import SalonMap from './SalonMap.jsx';
@@ -1382,13 +1382,7 @@ function requestFreshServiceTaxonomy() {
         })
             .then((response) => response.ok ? response.json() : null)
             .then((payload) => {
-                const groups = Array.isArray(payload?.data)
-                    ? payload.data.filter((group) => (
-                        !group?.parent_id
-                        && Array.isArray(group?.children)
-                        && group.children.length
-                    ))
-                    : [];
+                const groups = buildServiceTaxonomy(payload?.data);
 
                 return groups.length ? groups : fallbackServiceTaxonomy;
             })
@@ -1793,7 +1787,7 @@ function FreshNavbarCategoryMenu({ open, taxonomy, activeCategorySlug, onSelectC
 }
 
 function FreshHeader({ onMenu, menuOpen, panelActive = menuOpen, onClose, session, sessionReady = true, searchSlot = null }) {
-    // Session storage and the Sanctum cookie are only available after hydration.
+    // Session storage and the secure auth cookie are only available after hydration.
     // Until both have been checked, do not render the guest controls: doing so
     // made a logged-in customer briefly see the "Log in" navbar on refresh.
     const isSessionPending = !sessionReady;
@@ -3136,6 +3130,7 @@ function PricingSection({ providerUrl }) {
 }
 
 function BrowseSection({ locations }) {
+    const taxonomy = useFreshServiceTaxonomy();
     const cityItems = (locations.length ? locations : [
         { city: 'Jakarta Selatan' },
         { city: 'Bandung' },
@@ -3163,7 +3158,7 @@ function BrowseSection({ locations }) {
                 ))}
             </div>
             <div className="fresh-service-directory">
-                {fallbackServiceTaxonomy.map((category) => (
+                {taxonomy.map((category) => (
                     <Link href={getCategoryPath(category)} key={category.id || category.slug}>
                         {category.name}
                     </Link>

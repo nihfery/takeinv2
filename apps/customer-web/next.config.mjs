@@ -1,12 +1,11 @@
 /** @type {import('next').NextConfig} */
 
-// Origin of the Laravel backend, reachable from the Next.js server (same machine).
-// Defaults to localhost; override with BACKEND_PROXY_URL / NEXT_PUBLIC_BACKEND_URL.
+// Origin of the Go edge, reachable from the Next.js server. API mutations flow
+// through app/api/[...path]; this value is also used for server-rendered catalog data.
 const BACKEND_ORIGIN = (
-    process.env.BACKEND_PROXY_URL
+    process.env.GO_API_BASE_URL
     || process.env.NEXT_PUBLIC_BACKEND_URL
-    || process.env.VITE_BACKEND_URL
-    || 'http://127.0.0.1:8000'
+    || 'http://127.0.0.1:8088'
 ).replace(/\/$/, '');
 const PUBLIC_BACKEND_ORIGIN = (
     process.env.NEXT_PUBLIC_BACKEND_URL
@@ -37,19 +36,6 @@ const nextConfig = {
     // Allow the dev server (HMR/assets) to be used from other devices on the local
     // network without cross-origin warnings. Add your machine's LAN IP here.
     allowedDevOrigins: ['192.168.18.112', '192.168.18.*', '192.168.*'],
-    // Proxy backend assets/endpoints through the Next origin so the browser only ever
-    // talks to the same host it loaded the page from. This makes the app work when
-    // opened from another device on the local network (where 127.0.0.1 would point to
-    // the visitor's own machine instead of the server).
-    async rewrites() {
-        return [
-            { source: '/storage/:path*', destination: `${BACKEND_ORIGIN}/storage/:path*` },
-            { source: '/sanctum/:path*', destination: `${BACKEND_ORIGIN}/sanctum/:path*` },
-            { source: '/api/:path*', destination: `${BACKEND_ORIGIN}/api/:path*` },
-            { source: '/backend-sanctum/:path*', destination: `${BACKEND_ORIGIN}/sanctum/:path*` },
-            { source: '/backend-api/:path*', destination: `${BACKEND_ORIGIN}/api/:path*` },
-        ];
-    },
     async headers() {
         return [
             {

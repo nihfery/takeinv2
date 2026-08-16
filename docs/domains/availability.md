@@ -1,4 +1,4 @@
-# Availability domain
+﻿# Availability domain
 
 `Availability` owns eligible-staff resolution, schedule checks, and booking
 conflict detection. It has no table of its own: it reads Staff schedules/skills,
@@ -10,5 +10,5 @@ several existing flows. Extraction is intentionally incremental.
 
 Public eligible-staff/check-availability endpoints are rate-limited. A positive
 read response is advisory; booking create/reschedule repeats validation inside
-a MySQL transaction with row locks. Redis can coordinate runtime services but
+a PostgreSQL transaction with row locks. Redis can coordinate runtime services but
 does not replace this database authority.

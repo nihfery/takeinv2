@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package takein.events.billing.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/events/billing/v1;billingeventsv1";
+
+import "takein/events/common/v1/metadata.proto";
+
+message SubscriptionChanged {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string subscription_id = 2;
+  string provider_id = 3;
+  string status = 4;
+  string change_type = 5;
+}
+

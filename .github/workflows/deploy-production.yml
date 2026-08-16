@@ -24,6 +24,7 @@ jobs:
     environment: production
     env:
       DEPLOY_SHA: ${{ inputs.commit_sha }}
+      DEPLOY_ENVIRONMENT: production
       DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
       DEPLOY_USER: ${{ vars.DEPLOY_USER }}
       DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
@@ -48,12 +49,12 @@ jobs:
         run: echo "IMAGE_PREFIX=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
 
       - name: Validate protected deployment configuration
-        run: bash tools/ci/validate-deploy-env.sh
+        run: bash backend/tools/ci/validate-deploy-env.sh
 
       - name: Verify every required workflow for the commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash tools/ci/verify-ci-runs.sh "$GITHUB_REPOSITORY" "$DEPLOY_SHA"
+        run: bash backend/tools/ci/verify-ci-runs.sh "$GITHUB_REPOSITORY" "$DEPLOY_SHA"
 
       - name: Configure strict SSH host verification
         run: |
@@ -83,8 +84,8 @@ jobs:
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes \
             "$DEPLOY_USER@$DEPLOY_HOST" \
-            "bash -s -- '$DEPLOY_SHA' '$DEPLOY_PATH' '$DEPLOY_ENV_FILE' '$DEPLOY_COMPOSE_PROJECT' '$DEPLOY_ALLOWED_BRANCH' '$IMAGE_PREFIX'" \
-            < tools/ci/deploy-remote.sh
+            "bash -s -- '$DEPLOY_SHA' '$DEPLOY_PATH' '$DEPLOY_ENV_FILE' '$DEPLOY_COMPOSE_PROJECT' '$DEPLOY_ALLOWED_BRANCH' '$IMAGE_PREFIX' '$DEPLOY_ENVIRONMENT'" \
+            < backend/tools/ci/deploy-remote.sh
 
       - name: Verify public readiness endpoint
         run: >-

@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package takein.identity.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/identity/v1;identityv1";
+
+import "takein/common/v1/common.proto";
+
+service IdentityService {
+  rpc ValidateAccessToken(ValidateAccessTokenRequest) returns (ValidateAccessTokenResponse);
+  rpc GetIdentity(GetIdentityRequest) returns (GetIdentityResponse);
+  rpc UpdateIdentityProfile(UpdateIdentityProfileRequest) returns (UpdateIdentityProfileResponse);
+  rpc SetAccountStatus(SetAccountStatusRequest) returns (SetAccountStatusResponse);
+  rpc UpsertProviderBranchAccount(UpsertProviderBranchAccountRequest) returns (UpsertProviderBranchAccountResponse);
+}
+
+message ValidateAccessTokenRequest {
+  string access_token = 1;
+  takein.common.v1.RequestMetadata metadata = 2;
+}
+
+message ValidateAccessTokenResponse {
+  bool valid = 1;
+  Identity identity = 2;
+}
+
+message GetIdentityRequest {
+  string user_id = 1;
+  takein.common.v1.RequestMetadata metadata = 2;
+}
+
+message GetIdentityResponse {
+  Identity identity = 1;
+}
+
+message UpdateIdentityProfileRequest {
+  string user_id = 1;
+  string name = 2;
+  string email = 3;
+  string username = 4;
+  bool clear_username = 5;
+  takein.common.v1.RequestMetadata metadata = 6;
+}
+
+message UpdateIdentityProfileResponse {
+  Identity identity = 1;
+}
+
+message SetAccountStatusRequest {
+  string user_id = 1;
+  string status = 2;
+  takein.common.v1.RequestMetadata metadata = 3;
+}
+
+message SetAccountStatusResponse {
+  Identity identity = 1;
+}
+
+message UpsertProviderBranchAccountRequest {
+  string provider_id = 1;
+  string branch_id = 2;
+  string provider_role_id = 3;
+  string name = 4;
+  string email = 5;
+  string password = 6;
+  string status = 7;
+  repeated string permissions = 8;
+  takein.common.v1.RequestMetadata metadata = 9;
+}
+
+message UpsertProviderBranchAccountResponse {
+  Identity identity = 1;
+}
+
+message Identity {
+  string user_id = 1;
+  string email = 2;
+  string role = 3;
+  string status = 4;
+  string provider_id = 5;
+  string branch_id = 6;
+  repeated string permissions = 7;
+  string name = 8;
+  string username = 9;
+}

@@ -1,52 +1,38 @@
-# Security policy
+# Security Policy
 
-## Melaporkan kerentanan
+## Pelaporan
 
-Jangan membuka public issue yang berisi exploit, credential, data pribadi, atau
-detail tenant. Gunakan fitur **Private vulnerability reporting / Security
-Advisory** pada repository GitHub `nihfery/DITAKEIN`. Jika fitur tersebut tidak
-tersedia, hubungi maintainer melalui kanal privat organisasi yang telah
-disepakati. Repository ini tidak menetapkan SLA respons publik.
+Jangan membuka issue publik untuk kerentanan. Kirim laporan privat kepada
+maintainer dengan dampak, langkah reproduksi minimal, komponen/commit terdampak,
+dan mitigasi sementara bila tersedia. Jangan menyertakan token, credential,
+data customer, atau dump produksi.
 
-Sertakan versi/commit, surface yang terkena, langkah reproduksi minimum,
-dampak, dan bukti yang sudah disanitasi. Jangan mengakses data tenant lain,
-menjalankan denial-of-service, atau menguji production tanpa izin tertulis.
+## Model keamanan runtime
 
-## Baseline yang diterapkan
+- Identity menerbitkan access token RS256 berumur pendek. Semua API memvalidasi
+  signature, issuer, audience, expiry, dan role/permission.
+- Refresh token disimpan sebagai cookie secure, http-only, dan same-site pada
+  BFF Next.js; token tidak ditaruh di local storage.
+- gRPC internal memerlukan token service dan hanya tersedia pada jaringan
+  privat.
+- Provider/admin endpoint menerapkan RBAC serta pemeriksaan ownership resource.
+- Webhook Midtrans diverifikasi signature-nya, diproses idempotent, dan status
+  authoritative dikonfirmasi ke provider pembayaran.
+- Upload media dibatasi ukuran/tipe, memakai object key acak, dan akses private
+  menggunakan URL bertanda tangan berumur pendek.
+- Rahasia produksi berasal dari secret manager dan mount read-only. Repository
+  hanya menyediakan placeholder.
 
-- Laravel Sanctum untuk API authenticated dan session guard terpisah untuk
-  admin/provider/provider-branch.
-- Scope provider/branch, menu permission, status akun, dan verifikasi dokumen
-  diperiksa oleh middleware serta query/action domain.
-- Midtrans webhook diverifikasi signature-nya, diambil ulang dari API gateway,
-  dicocokkan order/amount/currency, diproses dalam transaksi/lock, dan diaudit.
-- Provider KTP/NIB serta chat attachment baru disimpan private dan diunduh
-  melalui route pendek bertanda tangan plus pemeriksaan actor/tenant.
-- Rate limit tersedia untuk login, registrasi, search, availability, booking,
-  payment, provider writes, coupon, dan webhook.
-- Structured logging meredaksi password, token, authorization, cookie,
-  signature, signed URL, dan field sensitif yang dikonfigurasi.
-- Request ID dan correlation ID dihasilkan pada trust boundary; inbound ID
-  tidak dipercaya secara default.
+## Data
 
-Dokumentasi detail:
+Setiap domain memiliki database PostgreSQL dan credential terpisah. Service tidak
+boleh membaca schema domain lain. Backup harus terenkripsi, diuji restore-nya,
+dan aksesnya diaudit. Log, metric, trace, serta audit event tidak boleh memuat
+password, token, cookie, signature webhook, atau URL private yang masih aktif.
 
-- [Authentication](docs/security/authentication.md)
-- [Authorization](docs/security/authorization.md)
-- [Data classification](docs/security/data-classification.md)
-- [File security](docs/security/file-security.md)
-- [Threat model](docs/security/threat-model.md)
-- [Security incident runbook](docs/runbooks/security-incident.md)
+## Gate minimum
 
-## Tanggung jawab deployment
-
-Secret wajib diinjeksi melalui environment/secret manager, bukan Git. Production
-wajib HTTPS, `APP_DEBUG=false`, cookie secure/http-only, origin Reverb eksplisit,
-dan origin Laravel hanya dapat dijangkau melalui proxy terpercaya. Admin ingress
-memerlukan kontrol edge lebih kuat (misalnya identity-aware access), MFA, dan
-monitoring; repository saat ini menyediakan auth/RBAC Laravel tetapi tidak
-memprovisi edge policy atau MFA eksternal.
-
-Hasil dependency/secret/container scan dari CI adalah signal, bukan pengganti
-review. Patch keamanan diterapkan pada branch yang masih dioperasikan; saat ini
-tidak ada jadwal dukungan versi formal di luar default branch.
+Sebelum rilis jalankan test, race test untuk domain kritis, contract check,
+dependency/vulnerability scan, container scan, migration preflight, dan smoke
+test. Deployment produksi wajib HTTPS, CORS allowlist eksplisit, private service
+network, immutable image tag, serta key rotation yang terdokumentasi.

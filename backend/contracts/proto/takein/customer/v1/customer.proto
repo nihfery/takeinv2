@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package takein.customer.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/customer/v1;customerv1";
+
+import "takein/common/v1/common.proto";
+
+service CustomerService {
+  rpc GetCustomer(GetCustomerRequest) returns (GetCustomerResponse);
+  rpc CheckReviewEligibility(CheckReviewEligibilityRequest) returns (CheckReviewEligibilityResponse);
+}
+
+message GetCustomerRequest {
+  string customer_id = 1;
+  takein.common.v1.RequestMetadata metadata = 2;
+}
+
+message GetCustomerResponse {
+  string customer_id = 1;
+  string user_id = 2;
+  string status = 3;
+}
+
+message CheckReviewEligibilityRequest {
+  string customer_id = 1;
+  string booking_id = 2;
+  takein.common.v1.RequestMetadata metadata = 3;
+}
+
+message CheckReviewEligibilityResponse {
+  bool eligible = 1;
+  string reason = 2;
+}
+

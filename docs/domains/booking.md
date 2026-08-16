@@ -1,18 +1,18 @@
-# Booking domain
+﻿# Booking domain
 
 ## Ownership
 
 `Booking` owns `bookings`, `booking_services`, `booking_participants`, and
 `booking_participant_services`. It presents customer API and admin/provider
-API/Blade flows for create, finalize, hold extension, reschedule, cancel,
+API/Next.js flows for create, finalize, hold extension, reschedule, cancel,
 check-in, start, complete, no-show, walk-in, queue, and calendar behavior.
 
 ## Invariants
 
 - Availability, provider/branch/service/staff ownership, schedule, price, and
   participant selections are validated server-side.
-- Writes use MySQL transaction and relevant user/staff/booking row locks.
-- Create/finalize/reschedule transaction memakai bounded Laravel deadlock retry
+- Writes use PostgreSQL transaction and relevant user/staff/booking row locks.
+- Create/finalize/reschedule transaction memakai bounded Go deadlock retry
   5 attempts; seluruh invariant divalidasi kembali pada retry.
 - Customer idempotency is scoped by the unique `(customer_id, idempotency_key)`
   contract.

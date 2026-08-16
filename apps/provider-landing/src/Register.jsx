@@ -2,35 +2,22 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { registerProvider } from './api';
+import { currentProvider, loginProvider, registerProvider } from './api';
 
-function currentHostname() {
-    return typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
-}
+const providerDashboardUrl = process.env.NEXT_PUBLIC_PROVIDER_DASHBOARD_URL || 'http://127.0.0.1:5175/provider/dashboard';
+const providerVerificationUrl = process.env.NEXT_PUBLIC_PROVIDER_VERIFICATION_URL || 'http://127.0.0.1:5175/provider/verification';
+const providerLoginUrl = process.env.NEXT_PUBLIC_PROVIDER_LOGIN_URL || 'http://127.0.0.1:5175/provider/login';
 
-function localBackendUrl() {
-    return `http://${currentHostname()}:8000`;
-}
+const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-function localizeLoopbackUrl(url) {
-    const normalized = String(url || '').replace(/\/$/, '');
-    try {
-        const parsed = new URL(normalized);
-        const hostname = currentHostname();
-        const loopbackHosts = new Set(['127.0.0.1', 'localhost', '::1']);
-        if (!loopbackHosts.has(String(hostname || '').toLowerCase()) && loopbackHosts.has(parsed.hostname)) {
-            parsed.hostname = hostname;
-        }
-        return String(parsed).replace(/\/$/, '');
-    } catch {
-        return normalized;
+async function refreshProjectedProviderSession(email, password) {
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+        if (attempt > 0) await wait(500);
+        const current = await currentProvider();
+        if (current?.user?.provider_id) return loginProvider({ email, password });
     }
+    return loginProvider({ email, password });
 }
-
-const backendUrl = localizeLoopbackUrl((typeof process !== 'undefined' && process.env.NEXT_PUBLIC_BACKEND_URL) || localBackendUrl());
-const apiBaseUrl = localizeLoopbackUrl((typeof process !== 'undefined' && process.env.NEXT_PUBLIC_API_BASE_URL) || `${backendUrl}/api`);
-const providerLoginPath = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_PROVIDER_LOGIN_PATH) ? process.env.NEXT_PUBLIC_PROVIDER_LOGIN_PATH : '/provider/signin';
-const loginUrl = `${backendUrl}${providerLoginPath}`;
 
 export default function Register() {
     const [isLogin, setIsLogin] = useState(false);
@@ -41,7 +28,6 @@ export default function Register() {
     const [error, setError] = useState('');
     const [showLoginPassword, setShowLoginPassword] = useState(false);
     const [showRegisterPassword, setShowRegisterPassword] = useState(false);
-    const [loginEmail, setLoginEmail] = useState('');
 
     const formContainerRef = useRef(null);
 
@@ -49,13 +35,14 @@ export default function Register() {
         if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search);
             if (params.get('mode') === 'login' || params.get('login') === '1' || params.get('login') === 'failed') {
-                setIsLogin(true);
+                window.location.replace(providerLoginUrl);
+                return;
             }
             if (params.get('login_error')) {
                 setError(params.get('login_error'));
             }
             if (params.get('login_email')) {
-                setLoginEmail(params.get('login_email'));
+                setEmail(params.get('login_email'));
             }
         }
     }, []);
@@ -68,11 +55,33 @@ export default function Register() {
 
     const toggleMode = (e) => {
         e.preventDefault();
+        if (!isLogin) {
+            window.location.assign(providerLoginUrl);
+            return;
+        }
         setIsLogin(!isLogin);
         setError('');
         setMessage('');
         setEmail('');
         setPassword('');
+    };
+
+    const handleLoginSubmit = async (e) => {
+        e.preventDefault();
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+        setError('');
+        setMessage('');
+        try {
+            const result = await loginProvider({ email: email.trim(), password });
+            const projected = await refreshProjectedProviderSession(email, password);
+            sessionStorage.setItem('takein_provider_user', JSON.stringify(projected?.user || result.user || {}));
+            window.location.assign(providerDashboardUrl);
+        } catch (err) {
+            setError(err.message || 'Login gagal. Periksa email dan password.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleRegisterSubmit = async (e) => {
@@ -84,7 +93,7 @@ export default function Register() {
         const username = email.split('@')[0]?.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase() || `mitra${Date.now().toString().slice(-5)}`;
 
         try {
-            const result = await registerProvider(`${apiBaseUrl}/auth/register/provider`, {
+            const result = await registerProvider('/api/auth/register/provider', {
                 first_name: 'Partner',
                 last_name: 'JasaKu',
                 username: username,
@@ -95,8 +104,13 @@ export default function Register() {
                 password_confirmation: password,
             });
 
+            sessionStorage.setItem('takein_provider_user', JSON.stringify(result.user || {}));
             setMessage('Pendaftaran berhasil. Membuka halaman verifikasi mitra...');
-            window.location.assign(`${backendUrl}${result.redirect_url || '/provider/verification'}`);
+            const destination = new URL(providerLoginUrl, window.location.origin);
+            destination.searchParams.set('registered', '1');
+            destination.searchParams.set('email', email);
+            destination.searchParams.set('next', new URL(providerVerificationUrl, window.location.origin).pathname);
+            window.location.assign(destination.toString());
         } catch (err) {
             setError(err.message || 'Failed to register. Please try again.');
         } finally {
@@ -168,15 +182,14 @@ export default function Register() {
                                     {error && <div className="register-alert error">{error}</div>}
                                     {message && <div className="register-alert success">{message}</div>}
 
-                                    <form action={loginUrl} method="POST" className="register-form">
+                                    <form onSubmit={handleLoginSubmit} className="register-form">
                                         <div className="form-group">
                                             <label>Email</label>
                                             <input 
-                                                key={loginEmail || 'email-input'}
-                                                name="login_email"
                                                 type="email" 
                                                 placeholder="nama@email.com" 
-                                                defaultValue={loginEmail}
+                                                value={email}
+                                                onChange={(event) => setEmail(event.target.value)}
                                                 required 
                                             />
                                         </div>
@@ -185,9 +198,10 @@ export default function Register() {
                                             <label>Password</label>
                                             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                                 <input 
-                                                    name="login_password"
                                                     type={showLoginPassword ? "text" : "password"} 
                                                     placeholder="********" 
+                                                    value={password}
+                                                    onChange={(event) => setPassword(event.target.value)}
                                                     required 
                                                     style={{ width: '100%', paddingRight: '48px' }}
                                                 />
@@ -251,7 +265,7 @@ export default function Register() {
                                                 disabled={isSubmitting}
                                             />
                                         </div>
-                                        
+
                                         <div className="form-group">
                                             <label>Password</label>
                                             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>

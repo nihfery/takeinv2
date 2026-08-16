@@ -5,13 +5,13 @@ import { getStaffPath, staffIdFromRoute } from '../../../src/lib/salon-routes.js
 export const dynamic = 'force-dynamic';
 
 function apiBaseUrl() {
-    const proxyUrl = String(process.env.BACKEND_PROXY_URL || '').replace(/\/$/, '');
+    const proxyUrl = String(process.env.GO_API_BASE_URL || '').replace(/\/$/, '');
     if (proxyUrl) return proxyUrl.endsWith('/api') ? proxyUrl : `${proxyUrl}/api`;
 
     return String(
         process.env.NEXT_PUBLIC_API_BASE_URL
         || process.env.VITE_API_BASE_URL
-        || 'http://127.0.0.1:8000/api'
+        || `${process.env.GO_API_BASE_URL || 'http://127.0.0.1:8088'}/api`
     ).replace(/\/$/, '');
 }
 

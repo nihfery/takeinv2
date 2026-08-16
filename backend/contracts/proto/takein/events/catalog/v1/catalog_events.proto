@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package takein.events.catalog.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/events/catalog/v1;catalogeventsv1";
+
+import "takein/events/common/v1/metadata.proto";
+
+message ServiceChanged {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string provider_id = 2;
+  string service_id = 3;
+  string status = 4;
+  string change_type = 5;
+}
+
+message CouponChanged {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string coupon_id = 2;
+  string status = 3;
+  string change_type = 4;
+}
+
+message CategoryChanged {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string category_id = 2;
+  string status = 3;
+  string change_type = 4;
+}

@@ -1,4 +1,4 @@
-# Payment domain
+﻿# Payment domain
 
 `Payment` owns `payments`, `payment_gateway_transactions`, the customer charge
 and status endpoints, Midtrans gateway client, and `/api/midtrans/notification`.
@@ -9,7 +9,7 @@ own aggregate/state fields.
 
 - Production manual customer confirmation is disabled.
 - Incoming notification signature is verified before processing.
-- Laravel fetches authoritative status from Midtrans and matches order ID,
+- Go fetches authoritative status from Midtrans and matches order ID,
   amount, currency, status code, and fraud state as applicable.
 - Payment/gateway/booking rows are locked and updated transactionally.
 - State transition checks make replay idempotent and prevent regressions such as

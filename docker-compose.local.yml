@@ -1,0 +1,17 @@
+# Optional local frontend port overlay. Combine this with docker-compose.yml.
+services:
+  provider:
+    ports:
+      - "127.0.0.1:${PROVIDER_LANDING_PORT:-5173}:3000"
+
+  customer:
+    ports:
+      - "127.0.0.1:${CUSTOMER_WEB_PORT:-5174}:5174"
+
+  provider-console:
+    ports:
+      - "127.0.0.1:${PROVIDER_CONSOLE_PORT:-5175}:5175"
+
+  admin-web:
+    ports:
+      - "127.0.0.1:${ADMIN_WEB_PORT:-5176}:5176"

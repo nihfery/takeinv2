@@ -1,4 +1,4 @@
-# Chat domain
+﻿# Chat domain
 
 `Chat` owns `chat_threads`, `chat_messages`, thread access rules, unread
 presentation support, and server-originated `ChatMessageSent` /
@@ -11,4 +11,4 @@ threads and customer/guest actors are rejected by channel/download rules.
 
 New image attachments are stored private; realtime payloads carry a short-lived
 relative signed route, never a raw object path. Message/thread rows remain the
-truth when Reverb delivery is unavailable.
+truth when WebSocket delivery is unavailable.

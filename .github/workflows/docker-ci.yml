@@ -1,0 +1,101 @@
+name: Go Docker CI
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ["backend/services/**", "backend/libs/go/**", "backend/gen/go/**", "backend/tools/schema-migrator/**", "backend/go.work*", "backend/docker-compose*.yml", "backend/infra/**", "backend/scripts/go/**", ".github/workflows/docker-ci.yml"]
+  push:
+    branches: [main]
+permissions: {contents: read, packages: write, security-events: write}
+concurrency:
+  group: go-docker-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [identity, customer, provider, catalog, booking, payment, billing, notification, chat, media, audit]
+        binary: [api, worker]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: backend
+          file: backend/services/${{ matrix.service }}-service/Dockerfile
+          build-args: |
+            SERVICE=${{ matrix.service }}-service
+            BINARY=${{ matrix.binary }}
+          tags: takein/${{ matrix.service }}-${{ matrix.binary }}:ci
+          load: true
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: takein/${{ matrix.service }}-${{ matrix.binary }}:ci
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Publish immutable image after scan
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          repository="${GITHUB_REPOSITORY,,}"
+          target="ghcr.io/${repository}/${{ matrix.service }}-${{ matrix.binary }}:sha-${GITHUB_SHA}"
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin >/dev/null
+          docker tag "takein/${{ matrix.service }}-${{ matrix.binary }}:ci" "$target"
+          docker push "$target"
+
+  schema-migrator:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: backend
+          file: backend/tools/schema-migrator/Dockerfile
+          tags: takein/schema-migrator:ci
+          load: true
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: takein/schema-migrator:ci
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+      - name: Publish immutable migrator image after scan
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: |
+          repository="${GITHUB_REPOSITORY,,}"
+          target="ghcr.io/${repository}/schema-migrator:sha-${GITHUB_SHA}"
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin >/dev/null
+          docker tag takein/schema-migrator:ci "$target"
+          docker push "$target"
+
+  runtime-smoke:
+    needs: [images, schema-migrator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: {persist-credentials: false}
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with: {go-version: 1.26.6, cache-dependency-path: "**/go.sum"}
+      - run: go install github.com/pressly/goose/v3/cmd/goose@v3.27.3
+      - name: Build and run critical edge E2E
+        working-directory: backend
+        run: sh scripts/go/e2e.sh
+      - name: Smoke every API, worker, and core dependency from a container
+        working-directory: backend
+        run: sh scripts/go/smoke.sh
+      - if: always()
+        working-directory: backend
+        run: docker compose -f docker-compose.yml --profile go-core --profile go-services --profile go-workers logs --no-color > docker-runtime.log
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with: {name: docker-runtime-log, path: backend/docker-runtime.log}

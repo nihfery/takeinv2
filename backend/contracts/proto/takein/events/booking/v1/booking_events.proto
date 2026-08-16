@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package takein.events.booking.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/events/booking/v1;bookingeventsv1";
+
+import "takein/events/common/v1/metadata.proto";
+
+message BookingChanged {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string booking_id = 2;
+  string booking_code = 3;
+  string customer_id = 4;
+  string provider_id = 5;
+  string branch_id = 6;
+  string status = 7;
+  string change_type = 8;
+  string staff_id = 9;
+  string payment_type = 10;
+  int64 total_price_minor_units = 11;
+  string currency = 12;
+  string booking_date = 13;
+}
+
+message HoldExpired {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string booking_id = 2;
+}

@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package takein.events.customer.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/events/customer/v1;customereventsv1";
+
+import "takein/events/common/v1/metadata.proto";
+
+message CustomerChanged {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string customer_id = 2;
+  string user_id = 3;
+  string status = 4;
+  string change_type = 5;
+}
+
+message ReviewCreated {
+  takein.events.common.v1.EventMetadata metadata = 1;
+  string review_id = 2;
+  string booking_id = 3;
+  string customer_id = 4;
+  string branch_id = 5;
+  string staff_id = 6;
+  int32 rating = 7;
+  string comment = 8;
+  string created_at = 9;
+  string provider_id = 10;
+}

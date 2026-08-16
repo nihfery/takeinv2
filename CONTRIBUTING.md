@@ -1,94 +1,61 @@
 # Contributing
 
-## Alur perubahan
+## Aturan umum
 
-1. Baca [arsitektur](ARCHITECTURE.md), ADR, dan dokumen domain yang disentuh.
-2. Buat branch kecil dengan satu tujuan. Jangan commit `.env`, credential,
-   database dump, media pengguna, atau output build.
-3. Pertahankan URL/route, migration historis, copy UI, dan behavior existing
-   kecuali perubahan kontrak disetujui dan diuji.
-4. Tempatkan business rule di modul pemiliknya. Controller baru idealnya hanya
-   authorize, validate/map input, memanggil action/query, lalu membentuk response.
-5. Tambahkan negative authorization test untuk perubahan auth/scope; tambahkan
-   concurrency/idempotency test untuk booking/payment yang relevan.
-6. Jalankan gate yang sesuai, lalu buka pull request dengan risiko, rollback,
-   migration impact, dan bukti validasi.
+- Pertahankan ownership domain: satu service tidak boleh membaca database
+  service lain.
+- Perubahan API harus memperbarui OpenAPI, route registry, dan test kontrak.
+- Perubahan event harus backward-compatible atau memakai versi schema baru.
+- Jangan commit `.env`, private key, credential, dump database, atau artefak
+  build.
+- Jangan mengubah file generated di `backend/gen/go` secara manual; ubah Protobuf lalu
+  jalankan generator.
 
-## Quality gates backend
-
-Dari `backend/laravel-core`:
+## Backend Go
 
 ```bash
-composer validate --strict --no-check-publish
-composer audit --locked
-composer dump-autoload --optimize
-php ../../tools/ci/check-pint-baseline.php
-php artisan test
-php artisan test --testsuite=Concurrency --colors=never
-php artisan route:list
-php artisan migrate:status
-php artisan app:deployment-check
+make -C backend bootstrap
+make -C backend generate
+make -C backend contract
+make -C backend vet
+make -C backend test
+make -C backend build
 ```
 
-The Pint ratchet is the current green style gate: every acknowledged legacy
-violation is bound to an exact file hash, while every new or modified PHP file
-must pass Pint. A repository-wide `vendor/bin/pint --test` remains the cleanup
-target and is expected to stay red until the recorded legacy debt is removed.
+Untuk perubahan concurrency-sensitive, jalankan juga:
 
-PHPUnit memakai database MySQL `salonku_testing_fresh`; concurrency suite
-menjalankan child process nyata dengan start barrier dan tidak boleh dijalankan
-bersamaan dengan suite lain pada schema yang sama. Lihat langkah pembuatan
-database test di [README](README.md). Jangan memakai database development atau
-production untuk test dengan `RefreshDatabase`.
-
-Gate parity dari root:
-
-```powershell
-pwsh -File tools/validation/compare-routes.ps1
-pwsh -File tools/validation/compare-migrations.ps1
-pwsh -File tools/validation/validate-http-runtime.ps1
+```bash
+make -C backend test-race
+make -C backend test-integration
 ```
 
-Script parity memakai baseline/allowlist yang disimpan repository. Perubahan
-route atau migration yang memang disengaja harus direview beserta alasan dan
-compatibility impact; jangan memperbarui baseline hanya untuk menyembunyikan
-drift.
+Migration database harus additive terlebih dahulu, idempotent pada deployment,
+dan kompatibel dengan versi aplikasi yang sedang rolling. Jalankan:
 
-## Quality gates frontend
+```bash
+make -C backend migrate-status
+make -C backend migrate
+```
 
-Di masing-masing `apps/customer-web` dan `apps/provider-landing`:
+## Frontend Next.js
+
+Di aplikasi yang diubah:
 
 ```bash
 npm ci
+npm run lint
 npm run build
 ```
 
-Package saat ini tidak mendefinisikan script lint/test terpisah. Jangan
-menuliskan job CI yang memanggil script yang tidak ada.
+Frontend harus memakai BFF `/api/*`; jangan menanam alamat service internal atau
+credential ke bundle browser. Pertahankan tampilan dan perilaku responsif ketika
+melakukan perubahan integrasi.
 
-## Database dan migration
+## Pull request
 
-- Jangan mengubah migration historis yang sudah pernah dirilis.
-- Tambahkan migration additive dan rollback yang masuk akal; hindari operasi
-  data-loss tanpa rencana pemulihan.
-- Perubahan booking/payment harus mempertahankan InnoDB, unique constraint,
-  transaction, row lock, dan idempotency invariant yang relevan.
-- Ikuti [migration policy](docs/database/migration-policy.md).
+PR harus menjelaskan domain yang berubah, kontrak/schema yang terdampak, cara
+rollback yang aman, dan hasil verifikasi. Perubahan lintas domain wajib
+menyebutkan alur gRPC/event dan strategi idempotency-nya.
 
-## Security dan media
-
-Gunakan validation MIME/extension/size yang eksplisit dan disk private untuk
-data sensitif. URL sementara tidak menggantikan authorization pada download.
-Jangan memperlebar `SESSION_DOMAIN`, `SANCTUM_STATEFUL_DOMAINS`, trusted proxy,
-atau Reverb origin tanpa threat-model review. Laporkan kerentanan mengikuti
-[SECURITY.md](SECURITY.md).
-
-## Pull request checklist
-
-- Behavior existing dan route/migration parity telah dicek.
-- Backend test serta build frontend yang terpengaruh lulus.
-- Tidak ada secret atau data pengguna pada diff/log/screenshot.
-- Migration, deployment, backup, dan rollback impact dijelaskan.
-- Dokumen domain/ADR/OpenAPI diperbarui bila kontrak berubah.
-- Item eksternal yang belum diprovisi ditandai sebagai future/blocker, bukan
-  diklaim sudah aktif.
+Laporkan masalah keamanan melalui jalur privat pada `SECURITY.md`, bukan issue
+publik.

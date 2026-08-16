@@ -4,9 +4,9 @@
 /backend/ @nihfery
 /apps/ @nihfery
 /platform/ @nihfery
-/contracts/ @nihfery
 /docs/ @nihfery
 /.github/ @nihfery
 /docker-compose.yml @nihfery
+/docker-compose.local.yml @nihfery
 /.env.example @nihfery
 /.env.production.example @nihfery

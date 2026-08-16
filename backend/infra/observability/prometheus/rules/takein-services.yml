@@ -1,0 +1,123 @@
+groups:
+  - name: takein-availability
+    rules:
+      - alert: TakeinServiceScrapeMissing
+        expr: up{job=~"takein-services|takein-workers"} == 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "TakeIn process metrics endpoint is unavailable"
+          description: "Prometheus cannot scrape {{ $labels.instance }}. Check readiness and the observability runbook."
+      - alert: TakeinHostDiskUsageHigh
+        expr: 1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) > 0.85
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "Host disk usage is above 85%"
+          description: "Disk {{ $labels.device }} on {{ $labels.instance }} has less than 15% capacity available."
+
+  - name: takein-transports
+    rules:
+      - alert: TakeinServiceHighHTTP5xxRate
+        expr: sum by (service) (rate(http_server_requests_total{status=~"5.."}[5m])) / clamp_min(sum by (service) (rate(http_server_requests_total[5m])), 0.001) > 0.05
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "TakeIn HTTP 5xx ratio is high"
+          description: "{{ $labels.service }} has exceeded a 5% HTTP 5xx ratio for ten minutes."
+      - alert: TakeinServiceHighP95Latency
+        expr: histogram_quantile(0.95, sum by (service, le) (rate(http_server_request_duration_bucket[5m]))) > 1
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "TakeIn HTTP p95 latency is high"
+          description: "{{ $labels.service }} p95 latency has exceeded one second for ten minutes."
+      - alert: TakeinServiceHighP99Latency
+        expr: histogram_quantile(0.99, sum by (service, le) (rate(http_server_request_duration_bucket[5m]))) > 2
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "TakeIn HTTP p99 latency is high"
+          description: "{{ $labels.service }} p99 latency has exceeded two seconds for ten minutes."
+      - alert: TakeinGRPCErrorRateHigh
+        expr: sum by (service) (rate(grpc_server_requests_total{code!="OK"}[5m])) / clamp_min(sum by (service) (rate(grpc_server_requests_total[5m])), 0.001) > 0.05
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "TakeIn gRPC error ratio is high"
+          description: "{{ $labels.service }} has exceeded a 5% gRPC error ratio."
+
+  - name: takein-dependencies
+    rules:
+      - alert: TakeinPostgresPoolSaturated
+        expr: db_pool_acquired / clamp_min(db_pool_max, 1) > 0.8
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "TakeIn PostgreSQL pool is saturated"
+          description: "{{ $labels.service }} has used more than 80% of its pool for ten minutes."
+      - alert: TakeinKafkaProducerErrors
+        expr: sum by (service) (rate(kafka_produce_errors_total[5m])) > 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "TakeIn Kafka producer errors detected"
+          description: "{{ $labels.service }} is failing to publish Kafka records."
+      - alert: TakeinKafkaConsumerLagHigh
+        expr: max by (service, topic) (kafka_consumer_lag_seconds) > 300
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "TakeIn Kafka consumer lag is high"
+          description: "{{ $labels.service }} has fetched events on {{ $labels.topic }} that are over five minutes old."
+      - alert: TakeinDLQGrowing
+        expr: sum by (service, topic) (increase(kafka_dlq_records_total[15m])) > 0
+        labels: {severity: critical}
+        annotations:
+          summary: "TakeIn DLQ is growing"
+          description: "{{ $labels.service }} wrote records to {{ $labels.topic }} in the last 15 minutes."
+      - alert: TakeinOutboxBacklog
+        expr: outbox_pending > 500
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "TakeIn outbox backlog is high"
+          description: "{{ $labels.service }} has more than 500 unpublished outbox events."
+      - alert: TakeinOutboxPoisonEvents
+        expr: outbox_failed > 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "TakeIn outbox contains poison events"
+          description: "{{ $labels.service }} has outbox events at the terminal retry limit."
+
+  - name: takein-domain
+    rules:
+      - alert: TakeinBookingConflictAnomaly
+        expr: rate(booking_conflict_total[10m]) / clamp_min(rate(booking_create_total[10m]), 0.001) > 0.2
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Booking conflict ratio is anomalous"
+          description: "More than 20% of booking attempts are encountering slot conflicts."
+      - alert: TakeinPaymentWebhookFailure
+        expr: sum(rate(http_server_requests_total{service="payment-service",route=~".*webhook.*",status=~"5.."}[5m])) > 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "Payment webhook handling is failing"
+          description: "Payment webhook requests have returned server errors for five minutes."
+      - alert: TakeinPaymentInvalidSignatureSpike
+        expr: rate(payment_webhook_invalid_signature_total[5m]) > 0.1
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Payment webhook invalid signatures spiked"
+          description: "Invalid webhook signatures exceed the initial baseline threshold."
+      - alert: TakeinAuthLoginFailureSpike
+        expr: rate(auth_login_failed_total[10m]) / clamp_min(rate(auth_login_total[10m]), 0.001) > 0.3
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Authentication failure ratio spiked"
+          description: "More than 30% of login attempts are failing."

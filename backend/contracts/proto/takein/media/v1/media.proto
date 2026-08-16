@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package takein.media.v1;
+
+option go_package = "github.com/nihfery/takein/gen/go/takein/media/v1;mediav1";
+
+import "takein/common/v1/common.proto";
+
+service MediaService {
+  rpc AuthorizeObject(AuthorizeObjectRequest) returns (AuthorizeObjectResponse);
+  rpc StoreObject(StoreObjectRequest) returns (StoreObjectResponse);
+}
+
+message StoreObjectRequest {
+  string purpose = 1;
+  string file_name = 2;
+  string content_type = 3;
+  bytes content = 4;
+  string visibility = 5;
+  takein.common.v1.RequestMetadata metadata = 6;
+}
+
+message StoreObjectResponse {
+  string object_id = 1;
+}
+
+message AuthorizeObjectRequest {
+  string object_id = 1;
+  string action = 2;
+  takein.common.v1.RequestMetadata metadata = 3;
+}
+
+message AuthorizeObjectResponse {
+  bool allowed = 1;
+  string signed_url = 2;
+  string expires_at = 3;
+}

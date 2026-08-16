@@ -1,0 +1,615 @@
+name: salonku
+
+x-takein-api: &takein-api
+  profiles: [go-services]
+  restart: unless-stopped
+  read_only: true
+  tmpfs: [/tmp]
+  networks: [takein_backend]
+  expose: ["8080", "9090"]
+  volumes:
+    - takein_jwt:/var/run/takein-jwt:ro
+    - ${TAKEIN_RUNTIME_SECRETS_SOURCE:-./infra/secrets/local}:/run/takein-secrets:ro
+  depends_on:
+    takein-postgres: {condition: service_healthy}
+    takein-kafka: {condition: service_healthy}
+    takein-redis: {condition: service_healthy}
+    takein-jwt-init: {condition: service_completed_successfully}
+  environment: &takein-common-env
+    APP_ENV: ${TAKEIN_APP_ENV:-local}
+    SERVICE_VERSION: ${TAKEIN_SERVICE_VERSION:-dev}
+    HTTP_ADDR: :8080
+    GRPC_ADDR: :9090
+    LOG_LEVEL: ${TAKEIN_LOG_LEVEL:-info}
+    SHUTDOWN_TIMEOUT: ${TAKEIN_SHUTDOWN_TIMEOUT:-20s}
+    REQUEST_TIMEOUT: ${TAKEIN_REQUEST_TIMEOUT:-15s}
+    POSTGRES_MAX_CONNS: ${TAKEIN_POSTGRES_MAX_CONNS:-10}
+    POSTGRES_MIN_CONNS: ${TAKEIN_POSTGRES_MIN_CONNS:-1}
+    POSTGRES_MAX_CONN_LIFETIME: ${TAKEIN_POSTGRES_MAX_CONN_LIFETIME:-30m}
+    POSTGRES_MAX_CONN_IDLE_TIME: ${TAKEIN_POSTGRES_MAX_CONN_IDLE_TIME:-5m}
+    POSTGRES_HEALTH_CHECK_PERIOD: ${TAKEIN_POSTGRES_HEALTH_CHECK_PERIOD:-30s}
+    POSTGRES_CONNECT_TIMEOUT: ${TAKEIN_POSTGRES_CONNECT_TIMEOUT:-5s}
+    KAFKA_BROKERS: ${TAKEIN_KAFKA_BROKERS:-takein-kafka:9092}
+    KAFKA_SECURITY_PROTOCOL: ${TAKEIN_KAFKA_SECURITY_PROTOCOL:-PLAINTEXT}
+    KAFKA_SASL_MECHANISM: ${TAKEIN_KAFKA_SASL_MECHANISM:-}
+    KAFKA_USERNAME: ${TAKEIN_KAFKA_USERNAME:-}
+    KAFKA_PASSWORD: ${TAKEIN_KAFKA_PASSWORD:-}
+    KAFKA_TLS_CA_FILE: ${TAKEIN_KAFKA_TLS_CA_FILE:-}
+    KAFKA_TLS_SERVER_NAME: ${TAKEIN_KAFKA_TLS_SERVER_NAME:-}
+    KAFKA_MAX_RETRIES: ${TAKEIN_KAFKA_MAX_RETRIES:-10}
+    KAFKA_CONSUMER_MAX_RETRIES: ${TAKEIN_KAFKA_CONSUMER_MAX_RETRIES:-5}
+    REDIS_ADDR: ${TAKEIN_REDIS_ADDR:-takein-redis:6379}
+    REDIS_PASSWORD: ${TAKEIN_REDIS_PASSWORD:-}
+    REDIS_DB: ${TAKEIN_REDIS_DB:-0}
+    CORS_ALLOWED_ORIGINS: ${TAKEIN_CORS_ALLOWED_ORIGINS:-http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:5175,http://127.0.0.1:5176}
+    JWT_ISSUER: ${JWT_ISSUER:-https://identity.takein.local}
+    JWT_AUDIENCE: ${JWT_AUDIENCE:-takein-api}
+    JWT_PUBLIC_KEY_FILE: ${JWT_PUBLIC_KEY_FILE:-/var/run/takein-jwt/public.pem}
+    OTEL_EXPORTER_OTLP_ENDPOINT: ${TAKEIN_OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
+    OTEL_SDK_DISABLED: ${OTEL_SDK_DISABLED:-false}
+    METRICS_ADDR: :8081
+    INTERNAL_GRPC_TOKEN: ${INTERNAL_GRPC_TOKEN:-}
+    IDENTITY_GRPC_ADDR: takein-identity-api:9090
+    CUSTOMER_GRPC_ADDR: takein-customer-api:9090
+    PROVIDER_GRPC_ADDR: takein-provider-api:9090
+    CATALOG_GRPC_ADDR: takein-catalog-api:9090
+    BOOKING_GRPC_ADDR: takein-booking-api:9090
+    PAYMENT_GRPC_ADDR: takein-payment-api:9090
+    BILLING_GRPC_ADDR: takein-billing-api:9090
+    MEDIA_GRPC_ADDR: takein-media-api:9090
+
+x-takein-worker: &takein-worker
+  profiles: [go-workers]
+  restart: unless-stopped
+  read_only: true
+  tmpfs: [/tmp]
+  networks: [takein_backend]
+  expose: ["8081"]
+  volumes:
+    - takein_jwt:/var/run/takein-jwt:ro
+    - ${TAKEIN_RUNTIME_SECRETS_SOURCE:-./infra/secrets/local}:/run/takein-secrets:ro
+  depends_on:
+    takein-postgres: {condition: service_healthy}
+    takein-kafka: {condition: service_healthy}
+  environment: *takein-common-env
+
+services:
+  takein-postgres:
+    image: postgres:18.6-alpine3.23
+    profiles: ["go-core", "all-services"]
+    restart: unless-stopped
+    init: true
+    environment:
+      POSTGRES_USER: takein_admin
+      POSTGRES_PASSWORD: "${TAKEIN_POSTGRES_ADMIN_PASSWORD:-takein_local_admin_only}"
+      TAKEIN_IDENTITY_DB_USER: "${TAKEIN_IDENTITY_DB_USER:-takein_identity}"
+      TAKEIN_IDENTITY_DB_PASSWORD: "${TAKEIN_IDENTITY_DB_PASSWORD:-identity_local_only}"
+      TAKEIN_CUSTOMER_DB_USER: "${TAKEIN_CUSTOMER_DB_USER:-takein_customer}"
+      TAKEIN_CUSTOMER_DB_PASSWORD: "${TAKEIN_CUSTOMER_DB_PASSWORD:-customer_local_only}"
+      TAKEIN_PROVIDER_DB_USER: "${TAKEIN_PROVIDER_DB_USER:-takein_provider}"
+      TAKEIN_PROVIDER_DB_PASSWORD: "${TAKEIN_PROVIDER_DB_PASSWORD:-provider_local_only}"
+      TAKEIN_CATALOG_DB_USER: "${TAKEIN_CATALOG_DB_USER:-takein_catalog}"
+      TAKEIN_CATALOG_DB_PASSWORD: "${TAKEIN_CATALOG_DB_PASSWORD:-catalog_local_only}"
+      TAKEIN_BOOKING_DB_USER: "${TAKEIN_BOOKING_DB_USER:-takein_booking}"
+      TAKEIN_BOOKING_DB_PASSWORD: "${TAKEIN_BOOKING_DB_PASSWORD:-booking_local_only}"
+      TAKEIN_PAYMENT_DB_USER: "${TAKEIN_PAYMENT_DB_USER:-takein_payment}"
+      TAKEIN_PAYMENT_DB_PASSWORD: "${TAKEIN_PAYMENT_DB_PASSWORD:-payment_local_only}"
+      TAKEIN_BILLING_DB_USER: "${TAKEIN_BILLING_DB_USER:-takein_billing}"
+      TAKEIN_BILLING_DB_PASSWORD: "${TAKEIN_BILLING_DB_PASSWORD:-billing_local_only}"
+      TAKEIN_NOTIFICATION_DB_USER: "${TAKEIN_NOTIFICATION_DB_USER:-takein_notification}"
+      TAKEIN_NOTIFICATION_DB_PASSWORD: "${TAKEIN_NOTIFICATION_DB_PASSWORD:-notification_local_only}"
+      TAKEIN_CHAT_DB_USER: "${TAKEIN_CHAT_DB_USER:-takein_chat}"
+      TAKEIN_CHAT_DB_PASSWORD: "${TAKEIN_CHAT_DB_PASSWORD:-chat_local_only}"
+      TAKEIN_MEDIA_DB_USER: "${TAKEIN_MEDIA_DB_USER:-takein_media}"
+      TAKEIN_MEDIA_DB_PASSWORD: "${TAKEIN_MEDIA_DB_PASSWORD:-media_local_only}"
+      TAKEIN_AUDIT_DB_USER: "${TAKEIN_AUDIT_DB_USER:-takein_audit}"
+      TAKEIN_AUDIT_DB_PASSWORD: "${TAKEIN_AUDIT_DB_PASSWORD:-audit_local_only}"
+    ports:
+      - "127.0.0.1:${TAKEIN_POSTGRES_PORT:-15432}:5432"
+    volumes:
+      - takein_postgres:/var/lib/postgresql
+      - ./infra/docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks: [takein_backend, takein_dev]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U takein_admin -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+  takein-redis:
+    image: redis:8.2.2-alpine3.22
+    profiles: ["go-core", "all-services"]
+    restart: unless-stopped
+    init: true
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "127.0.0.1:${TAKEIN_REDIS_PORT:-6380}:6379"
+    volumes:
+      - takein_redis:/data
+    networks: [takein_backend, takein_dev]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  takein-kafka:
+    image: apache/kafka:4.3.1
+    profiles: ["go-core", "all-services"]
+    restart: unless-stopped
+    init: true
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: CONTROLLER://:9093,INTERNAL://:9092,EXTERNAL://:29092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://takein-kafka:9092,EXTERNAL://127.0.0.1:${TAKEIN_KAFKA_PORT:-29092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@takein-kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+    ports:
+      - "127.0.0.1:${TAKEIN_KAFKA_PORT:-29092}:29092"
+    volumes:
+      - takein_kafka:/var/lib/kafka/data
+    networks: [takein_backend, takein_dev]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 30s
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.139.0
+    profiles: ["observability", "all-services"]
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./infra/observability/otel-collector/config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+    networks: [takein_backend]
+
+  prometheus:
+    image: prom/prometheus:v3.7.3
+    profiles: ["observability", "all-services"]
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
+    volumes:
+      - ./infra/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/observability/prometheus/rules:/etc/prometheus/rules:ro
+      - takein_prometheus:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks: [takein_backend]
+
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    profiles: ["observability", "all-services"]
+    command: ["--path.rootfs=/host"]
+    pid: host
+    volumes:
+      - /:/host:ro
+    networks: [takein_backend]
+
+  loki:
+    image: grafana/loki:3.5.7
+    profiles: ["observability", "all-services"]
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./infra/observability/loki/config.yaml:/etc/loki/config.yaml:ro
+      - takein_loki:/loki
+    ports:
+      - "127.0.0.1:3100:3100"
+    networks: [takein_backend]
+
+  grafana:
+    image: grafana/grafana:12.2.0
+    profiles: ["observability", "all-services"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: "${TAKEIN_GRAFANA_ADMIN_PASSWORD:-takein_local_grafana_only}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - takein_grafana:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3001:3000"
+    networks: [takein_backend]
+
+  takein-jwt-init:
+    image: busybox:1.37.0-musl
+    profiles: [go-services]
+    restart: "no"
+    user: "0:0"
+    command: ["sh", "-c", "chown -R 65532:65532 /jwt && chmod 700 /jwt"]
+    volumes:
+      - takein_jwt:/jwt
+    networks: [takein_backend]
+
+  takein-object-storage-init:
+    image: busybox:1.37.0-musl
+    profiles: [go-services]
+    restart: "no"
+    user: "0:0"
+    command: ["sh", "-c", "chown -R 65532:65532 /data && chmod 750 /data"]
+    volumes:
+      - takein_objects:/data
+    networks: [takein_backend]
+
+  takein-object-storage:
+    image: takein/s3-mock:local
+    profiles: [go-services]
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    ports:
+      - "127.0.0.1:${TAKEIN_OBJECT_STORAGE_PORT:-19000}:8080"
+    build:
+      context: .
+      dockerfile: services/media-service/Dockerfile
+      args: {SERVICE: media-service, BINARY: s3-mock}
+    environment:
+      OBJECT_ROOT: /data
+    volumes:
+      - takein_objects:/data
+    expose: ["8080"]
+    networks: [takein_backend]
+    depends_on:
+      takein-object-storage-init: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "/service", "healthcheck"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+
+  takein-midtrans-mock:
+    image: takein/midtrans-mock:local
+    profiles: [go-services]
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    build:
+      context: .
+      dockerfile: services/payment-service/Dockerfile
+      args: {SERVICE: payment-service, BINARY: midtrans-mock}
+    ports:
+      - "127.0.0.1:${TAKEIN_MIDTRANS_MOCK_PORT:-19001}:8080"
+    expose: ["8080"]
+    networks: [takein_backend]
+
+  takein-edge:
+    image: traefik:v3.7.9
+    profiles: [go-services]
+    restart: unless-stopped
+    command:
+      - --api.dashboard=false
+      - --providers.file.filename=/etc/traefik/dynamic/routes.yml
+      - --providers.file.watch=true
+      - --entrypoints.web.address=:8080
+    ports:
+      - "127.0.0.1:${TAKEIN_EDGE_PORT:-8088}:8080"
+    volumes:
+      - ./infra/traefik/dynamic-routes.yml:/etc/traefik/dynamic/routes.yml:ro
+    networks: [takein_backend]
+
+  takein-schema-migrator:
+    image: ${TAKEIN_SCHEMA_MIGRATOR_IMAGE:-takein/schema-migrator:local}
+    profiles: [go-migrate]
+    restart: "no"
+    read_only: true
+    tmpfs: [/tmp]
+    build:
+      context: .
+      dockerfile: tools/schema-migrator/Dockerfile
+    environment:
+      TAKEIN_IDENTITY_POSTGRES_DSN: ${TAKEIN_IDENTITY_POSTGRES_DSN:-postgres://takein_identity:${TAKEIN_IDENTITY_DB_PASSWORD:-identity_local_only}@takein-postgres:5432/takein_identity?sslmode=disable}
+      TAKEIN_CUSTOMER_POSTGRES_DSN: ${TAKEIN_CUSTOMER_POSTGRES_DSN:-postgres://takein_customer:${TAKEIN_CUSTOMER_DB_PASSWORD:-customer_local_only}@takein-postgres:5432/takein_customer?sslmode=disable}
+      TAKEIN_PROVIDER_POSTGRES_DSN: ${TAKEIN_PROVIDER_POSTGRES_DSN:-postgres://takein_provider:${TAKEIN_PROVIDER_DB_PASSWORD:-provider_local_only}@takein-postgres:5432/takein_provider?sslmode=disable}
+      TAKEIN_CATALOG_POSTGRES_DSN: ${TAKEIN_CATALOG_POSTGRES_DSN:-postgres://takein_catalog:${TAKEIN_CATALOG_DB_PASSWORD:-catalog_local_only}@takein-postgres:5432/takein_catalog?sslmode=disable}
+      TAKEIN_BOOKING_POSTGRES_DSN: ${TAKEIN_BOOKING_POSTGRES_DSN:-postgres://takein_booking:${TAKEIN_BOOKING_DB_PASSWORD:-booking_local_only}@takein-postgres:5432/takein_booking?sslmode=disable}
+      TAKEIN_PAYMENT_POSTGRES_DSN: ${TAKEIN_PAYMENT_POSTGRES_DSN:-postgres://takein_payment:${TAKEIN_PAYMENT_DB_PASSWORD:-payment_local_only}@takein-postgres:5432/takein_payment?sslmode=disable}
+      TAKEIN_BILLING_POSTGRES_DSN: ${TAKEIN_BILLING_POSTGRES_DSN:-postgres://takein_billing:${TAKEIN_BILLING_DB_PASSWORD:-billing_local_only}@takein-postgres:5432/takein_billing?sslmode=disable}
+      TAKEIN_NOTIFICATION_POSTGRES_DSN: ${TAKEIN_NOTIFICATION_POSTGRES_DSN:-postgres://takein_notification:${TAKEIN_NOTIFICATION_DB_PASSWORD:-notification_local_only}@takein-postgres:5432/takein_notification?sslmode=disable}
+      TAKEIN_CHAT_POSTGRES_DSN: ${TAKEIN_CHAT_POSTGRES_DSN:-postgres://takein_chat:${TAKEIN_CHAT_DB_PASSWORD:-chat_local_only}@takein-postgres:5432/takein_chat?sslmode=disable}
+      TAKEIN_MEDIA_POSTGRES_DSN: ${TAKEIN_MEDIA_POSTGRES_DSN:-postgres://takein_media:${TAKEIN_MEDIA_DB_PASSWORD:-media_local_only}@takein-postgres:5432/takein_media?sslmode=disable}
+      TAKEIN_AUDIT_POSTGRES_DSN: ${TAKEIN_AUDIT_POSTGRES_DSN:-postgres://takein_audit:${TAKEIN_AUDIT_DB_PASSWORD:-audit_local_only}@takein-postgres:5432/takein_audit?sslmode=disable}
+    volumes:
+      - ${TAKEIN_RUNTIME_SECRETS_SOURCE:-./infra/secrets/local}:/run/takein-secrets:ro
+    networks: [takein_backend]
+
+  takein-identity-api:
+    <<: *takein-api
+    image: ${TAKEIN_IDENTITY_API_IMAGE:-takein/identity-service:local}
+    build:
+      context: .
+      dockerfile: services/identity-service/Dockerfile
+      args: {SERVICE: identity-service, BINARY: api}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: identity-service
+      POSTGRES_DSN: ${TAKEIN_IDENTITY_POSTGRES_DSN:-postgres://takein_identity:${TAKEIN_IDENTITY_DB_PASSWORD:-identity_local_only}@takein-postgres:5432/takein_identity?sslmode=disable}
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:-}
+      JWT_KEY_ID: ${JWT_KEY_ID:-local-ephemeral}
+      JWT_PRIVATE_KEY_FILE: ${JWT_PRIVATE_KEY_FILE:-/var/run/takein-jwt/private.pem}
+      RATE_LIMIT_REGISTER: ${TAKEIN_RATE_LIMIT_REGISTER:-10}
+      RATE_LIMIT_LOGIN: ${TAKEIN_RATE_LIMIT_LOGIN:-10}
+      RATE_LIMIT_REFRESH: ${TAKEIN_RATE_LIMIT_REFRESH:-20}
+    volumes:
+      - takein_jwt:/var/run/takein-jwt
+      - ${TAKEIN_RUNTIME_SECRETS_SOURCE:-./infra/secrets/local}:/run/takein-secrets:ro
+  takein-customer-api:
+    <<: *takein-api
+    image: ${TAKEIN_CUSTOMER_API_IMAGE:-takein/customer-service:local}
+    build:
+      context: .
+      dockerfile: services/customer-service/Dockerfile
+      args: {SERVICE: customer-service, BINARY: api}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: customer-service
+      POSTGRES_DSN: ${TAKEIN_CUSTOMER_POSTGRES_DSN:-postgres://takein_customer:${TAKEIN_CUSTOMER_DB_PASSWORD:-customer_local_only}@takein-postgres:5432/takein_customer?sslmode=disable}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+  takein-provider-api:
+    <<: *takein-api
+    image: ${TAKEIN_PROVIDER_API_IMAGE:-takein/provider-service:local}
+    build:
+      context: .
+      dockerfile: services/provider-service/Dockerfile
+      args: {SERVICE: provider-service, BINARY: api}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: provider-service
+      POSTGRES_DSN: ${TAKEIN_PROVIDER_POSTGRES_DSN:-postgres://takein_provider:${TAKEIN_PROVIDER_DB_PASSWORD:-provider_local_only}@takein-postgres:5432/takein_provider?sslmode=disable}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+  takein-catalog-api:
+    <<: *takein-api
+    image: ${TAKEIN_CATALOG_API_IMAGE:-takein/catalog-service:local}
+    build:
+      context: .
+      dockerfile: services/catalog-service/Dockerfile
+      args: {SERVICE: catalog-service, BINARY: api}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: catalog-service
+      POSTGRES_DSN: ${TAKEIN_CATALOG_POSTGRES_DSN:-postgres://takein_catalog:${TAKEIN_CATALOG_DB_PASSWORD:-catalog_local_only}@takein-postgres:5432/takein_catalog?sslmode=disable}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+  takein-booking-api:
+    <<: *takein-api
+    image: ${TAKEIN_BOOKING_API_IMAGE:-takein/booking-service:local}
+    build:
+      context: .
+      dockerfile: services/booking-service/Dockerfile
+      args: {SERVICE: booking-service, BINARY: api}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: booking-service
+      POSTGRES_DSN: ${TAKEIN_BOOKING_POSTGRES_DSN:-postgres://takein_booking:${TAKEIN_BOOKING_DB_PASSWORD:-booking_local_only}@takein-postgres:5432/takein_booking?sslmode=disable}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+  takein-payment-api:
+    <<: *takein-api
+    image: ${TAKEIN_PAYMENT_API_IMAGE:-takein/payment-service:local}
+    build:
+      context: .
+      dockerfile: services/payment-service/Dockerfile
+      args: {SERVICE: payment-service, BINARY: api}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: payment-service
+      POSTGRES_DSN: ${TAKEIN_PAYMENT_POSTGRES_DSN:-postgres://takein_payment:${TAKEIN_PAYMENT_DB_PASSWORD:-payment_local_only}@takein-postgres:5432/takein_payment?sslmode=disable}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+      MIDTRANS_BASE_URL: ${MIDTRANS_BASE_URL:-http://takein-midtrans-mock:8080}
+      MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY:-local_midtrans_server_key}
+  takein-billing-api:
+    <<: *takein-api
+    image: ${TAKEIN_BILLING_API_IMAGE:-takein/billing-service:local}
+    build:
+      context: .
+      dockerfile: services/billing-service/Dockerfile
+      args: {SERVICE: billing-service, BINARY: api}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: billing-service
+      POSTGRES_DSN: ${TAKEIN_BILLING_POSTGRES_DSN:-postgres://takein_billing:${TAKEIN_BILLING_DB_PASSWORD:-billing_local_only}@takein-postgres:5432/takein_billing?sslmode=disable}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+  takein-notification-api:
+    <<: *takein-api
+    image: ${TAKEIN_NOTIFICATION_API_IMAGE:-takein/notification-service:local}
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+      args: {SERVICE: notification-service, BINARY: api}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: notification-service
+      POSTGRES_DSN: ${TAKEIN_NOTIFICATION_POSTGRES_DSN:-postgres://takein_notification:${TAKEIN_NOTIFICATION_DB_PASSWORD:-notification_local_only}@takein-postgres:5432/takein_notification?sslmode=disable}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+  takein-chat-api:
+    <<: *takein-api
+    image: ${TAKEIN_CHAT_API_IMAGE:-takein/chat-service:local}
+    build:
+      context: .
+      dockerfile: services/chat-service/Dockerfile
+      args: {SERVICE: chat-service, BINARY: api}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: chat-service
+      POSTGRES_DSN: ${TAKEIN_CHAT_POSTGRES_DSN:-postgres://takein_chat:${TAKEIN_CHAT_DB_PASSWORD:-chat_local_only}@takein-postgres:5432/takein_chat?sslmode=disable}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+  takein-media-api:
+    <<: *takein-api
+    image: ${TAKEIN_MEDIA_API_IMAGE:-takein/media-service:local}
+    build:
+      context: .
+      dockerfile: services/media-service/Dockerfile
+      args: {SERVICE: media-service, BINARY: api}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: media-service
+      POSTGRES_DSN: ${TAKEIN_MEDIA_POSTGRES_DSN:-postgres://takein_media:${TAKEIN_MEDIA_DB_PASSWORD:-media_local_only}@takein-postgres:5432/takein_media?sslmode=disable}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://takein-object-storage:8080}
+      S3_REGION: ${S3_REGION:-auto}
+      S3_BUCKET: ${S3_BUCKET:-takein-private}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-local-access}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-local-secret}
+      GRPC_MAX_RECV_BYTES: 6291456
+    depends_on:
+      takein-postgres: {condition: service_healthy}
+      takein-kafka: {condition: service_healthy}
+      takein-redis: {condition: service_healthy}
+      takein-object-storage: {condition: service_healthy}
+  takein-audit-api:
+    <<: *takein-api
+    image: ${TAKEIN_AUDIT_API_IMAGE:-takein/audit-service:local}
+    build:
+      context: .
+      dockerfile: services/audit-service/Dockerfile
+      args: {SERVICE: audit-service, BINARY: api}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: audit-service
+      POSTGRES_DSN: ${TAKEIN_AUDIT_POSTGRES_DSN:-postgres://takein_audit:${TAKEIN_AUDIT_DB_PASSWORD:-audit_local_only}@takein-postgres:5432/takein_audit?sslmode=disable}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+  takein-identity-worker:
+    <<: *takein-worker
+    image: ${TAKEIN_IDENTITY_WORKER_IMAGE:-takein/identity-worker:local}
+    build:
+      context: .
+      dockerfile: services/identity-service/Dockerfile
+      args: {SERVICE: identity-service, BINARY: worker}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: identity-worker
+      POSTGRES_DSN: ${TAKEIN_IDENTITY_POSTGRES_DSN:-postgres://takein_identity:${TAKEIN_IDENTITY_DB_PASSWORD:-identity_local_only}@takein-postgres:5432/takein_identity?sslmode=disable}
+  takein-customer-worker:
+    <<: *takein-worker
+    image: ${TAKEIN_CUSTOMER_WORKER_IMAGE:-takein/customer-worker:local}
+    build:
+      context: .
+      dockerfile: services/customer-service/Dockerfile
+      args: {SERVICE: customer-service, BINARY: worker}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: customer-worker
+      POSTGRES_DSN: ${TAKEIN_CUSTOMER_POSTGRES_DSN:-postgres://takein_customer:${TAKEIN_CUSTOMER_DB_PASSWORD:-customer_local_only}@takein-postgres:5432/takein_customer?sslmode=disable}
+  takein-provider-worker:
+    <<: *takein-worker
+    image: ${TAKEIN_PROVIDER_WORKER_IMAGE:-takein/provider-worker:local}
+    build:
+      context: .
+      dockerfile: services/provider-service/Dockerfile
+      args: {SERVICE: provider-service, BINARY: worker}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: provider-worker
+      POSTGRES_DSN: ${TAKEIN_PROVIDER_POSTGRES_DSN:-postgres://takein_provider:${TAKEIN_PROVIDER_DB_PASSWORD:-provider_local_only}@takein-postgres:5432/takein_provider?sslmode=disable}
+  takein-catalog-worker:
+    <<: *takein-worker
+    image: ${TAKEIN_CATALOG_WORKER_IMAGE:-takein/catalog-worker:local}
+    build:
+      context: .
+      dockerfile: services/catalog-service/Dockerfile
+      args: {SERVICE: catalog-service, BINARY: worker}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: catalog-worker
+      POSTGRES_DSN: ${TAKEIN_CATALOG_POSTGRES_DSN:-postgres://takein_catalog:${TAKEIN_CATALOG_DB_PASSWORD:-catalog_local_only}@takein-postgres:5432/takein_catalog?sslmode=disable}
+  takein-booking-worker:
+    <<: *takein-worker
+    image: ${TAKEIN_BOOKING_WORKER_IMAGE:-takein/booking-worker:local}
+    build:
+      context: .
+      dockerfile: services/booking-service/Dockerfile
+      args: {SERVICE: booking-service, BINARY: worker}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: booking-worker
+      POSTGRES_DSN: ${TAKEIN_BOOKING_POSTGRES_DSN:-postgres://takein_booking:${TAKEIN_BOOKING_DB_PASSWORD:-booking_local_only}@takein-postgres:5432/takein_booking?sslmode=disable}
+  takein-payment-worker:
+    <<: *takein-worker
+    image: ${TAKEIN_PAYMENT_WORKER_IMAGE:-takein/payment-worker:local}
+    build:
+      context: .
+      dockerfile: services/payment-service/Dockerfile
+      args: {SERVICE: payment-service, BINARY: worker}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: payment-worker
+      POSTGRES_DSN: ${TAKEIN_PAYMENT_POSTGRES_DSN:-postgres://takein_payment:${TAKEIN_PAYMENT_DB_PASSWORD:-payment_local_only}@takein-postgres:5432/takein_payment?sslmode=disable}
+  takein-billing-worker:
+    <<: *takein-worker
+    image: ${TAKEIN_BILLING_WORKER_IMAGE:-takein/billing-worker:local}
+    build:
+      context: .
+      dockerfile: services/billing-service/Dockerfile
+      args: {SERVICE: billing-service, BINARY: worker}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: billing-worker
+      POSTGRES_DSN: ${TAKEIN_BILLING_POSTGRES_DSN:-postgres://takein_billing:${TAKEIN_BILLING_DB_PASSWORD:-billing_local_only}@takein-postgres:5432/takein_billing?sslmode=disable}
+  takein-notification-worker:
+    <<: *takein-worker
+    image: ${TAKEIN_NOTIFICATION_WORKER_IMAGE:-takein/notification-worker:local}
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+      args: {SERVICE: notification-service, BINARY: worker}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: notification-worker
+      POSTGRES_DSN: ${TAKEIN_NOTIFICATION_POSTGRES_DSN:-postgres://takein_notification:${TAKEIN_NOTIFICATION_DB_PASSWORD:-notification_local_only}@takein-postgres:5432/takein_notification?sslmode=disable}
+  takein-chat-worker:
+    <<: *takein-worker
+    image: ${TAKEIN_CHAT_WORKER_IMAGE:-takein/chat-worker:local}
+    build:
+      context: .
+      dockerfile: services/chat-service/Dockerfile
+      args: {SERVICE: chat-service, BINARY: worker}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: chat-worker
+      POSTGRES_DSN: ${TAKEIN_CHAT_POSTGRES_DSN:-postgres://takein_chat:${TAKEIN_CHAT_DB_PASSWORD:-chat_local_only}@takein-postgres:5432/takein_chat?sslmode=disable}
+  takein-media-worker:
+    <<: *takein-worker
+    image: ${TAKEIN_MEDIA_WORKER_IMAGE:-takein/media-worker:local}
+    build:
+      context: .
+      dockerfile: services/media-service/Dockerfile
+      args: {SERVICE: media-service, BINARY: worker}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: media-worker
+      POSTGRES_DSN: ${TAKEIN_MEDIA_POSTGRES_DSN:-postgres://takein_media:${TAKEIN_MEDIA_DB_PASSWORD:-media_local_only}@takein-postgres:5432/takein_media?sslmode=disable}
+  takein-audit-worker:
+    <<: *takein-worker
+    image: ${TAKEIN_AUDIT_WORKER_IMAGE:-takein/audit-worker:local}
+    build:
+      context: .
+      dockerfile: services/audit-service/Dockerfile
+      args: {SERVICE: audit-service, BINARY: worker}
+    environment:
+      <<: *takein-common-env
+      SERVICE_NAME: audit-worker
+      POSTGRES_DSN: ${TAKEIN_AUDIT_POSTGRES_DSN:-postgres://takein_audit:${TAKEIN_AUDIT_DB_PASSWORD:-audit_local_only}@takein-postgres:5432/takein_audit?sslmode=disable}
+
+volumes:
+  takein_postgres:
+  takein_redis:
+  takein_kafka:
+  takein_prometheus:
+  takein_loki:
+  takein_grafana:
+  takein_jwt:
+  takein_objects:
+
+networks:
+  takein_backend:
+    driver: bridge
+  takein_dev:
+    driver: bridge

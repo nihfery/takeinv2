@@ -1,0 +1,44 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["127.0.0.1:9090"]
+  - job_name: node-exporter
+    static_configs:
+      - targets: ["node-exporter:9100"]
+  - job_name: takein-services
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - takein-identity-api:8080
+          - takein-customer-api:8080
+          - takein-provider-api:8080
+          - takein-catalog-api:8080
+          - takein-booking-api:8080
+          - takein-payment-api:8080
+          - takein-billing-api:8080
+          - takein-notification-api:8080
+          - takein-chat-api:8080
+          - takein-media-api:8080
+          - takein-audit-api:8080
+  - job_name: takein-workers
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - takein-identity-worker:8081
+          - takein-customer-worker:8081
+          - takein-provider-worker:8081
+          - takein-catalog-worker:8081
+          - takein-booking-worker:8081
+          - takein-payment-worker:8081
+          - takein-billing-worker:8081
+          - takein-notification-worker:8081
+          - takein-chat-worker:8081
+          - takein-media-worker:8081
+          - takein-audit-worker:8081

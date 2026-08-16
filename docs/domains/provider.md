@@ -14,8 +14,8 @@ verified KTP/NIB, branch assignment, role/menu permission, and owner-only checks
 are enforced where applicable.
 
 New KTP/NIB objects are private and accessed through signed routes with
-owner/admin authorization. Public business imagery remains on the legacy public
-flow pending a separately validated media cutover. See `docs/domains/media.md`.
+owner/admin authorization. Public business imagery is stored through
+media-service. See `docs/domains/media.md`.
 
 Provider eligibility exposed publicly requires an active provider profile with
 verified documents; branch/service/staff readiness is evaluated by the setup

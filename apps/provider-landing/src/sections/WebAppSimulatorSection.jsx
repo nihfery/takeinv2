@@ -57,7 +57,7 @@ export default function WebAppSimulatorSection() {
 }
 
 // ==========================================
-// DEMO: Real Staff (Laravel Iframe)
+// DEMO: Real Staff (Next.js preview)
 // ==========================================
 function DemoRealStaff() {
     return (

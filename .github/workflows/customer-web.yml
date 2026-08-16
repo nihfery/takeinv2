@@ -58,7 +58,7 @@ jobs:
 
       - name: Build customer application
         env:
-          BACKEND_PROXY_URL: http://127.0.0.1:8000
+          GO_API_BASE_URL: http://127.0.0.1:8088
           NEXT_PUBLIC_BACKEND_URL: https://api.example.invalid
           NEXT_PUBLIC_API_BASE_URL: https://api.example.invalid/api
           NEXT_PUBLIC_PROVIDER_FRONTEND_URL: https://partners.example.invalid
