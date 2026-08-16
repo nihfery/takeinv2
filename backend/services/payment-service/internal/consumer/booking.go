@@ -51,7 +51,11 @@ func (p *BookingProcessor) Process(ctx context.Context, record *kgo.Record) erro
 	if err = proto.Unmarshal(record.Value, message); err != nil {
 		return err
 	}
-	if message.GetPaymentType() != "pay_at_salon" {
+	// A hold-only booking temporarily uses pay_at_salon until the customer
+	// finalizes the actual payment preference. Projecting that transient state
+	// would reserve the booking's unique payment row and race with a later
+	// Midtrans charge.
+	if message.GetPaymentType() != "pay_at_salon" || message.GetStatus() == "pending_hold" {
 		return tx.Commit(ctx)
 	}
 	bookingID, err := strconv.ParseInt(message.GetBookingId(), 10, 64)

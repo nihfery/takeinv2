@@ -56,6 +56,37 @@ func TestPayAtSalonProjectionIsCreatedAndPaidIdempotently(t *testing.T) {
 	}
 }
 
+func TestPendingHoldDoesNotCreatePayAtSalonProjection(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is required for booking projection test")
+	}
+	pool, err := pgxpool.New(context.Background(), dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+
+	processor := NewBookingProcessor(pool)
+	seed := time.Now().UnixNano() % 1_000_000_000
+	bookingID := seed + 6_000_000_000
+	message := &bookingeventsv1.BookingChanged{
+		BookingId: strconv.FormatInt(bookingID, 10), ProviderId: strconv.FormatInt(seed+10, 10), CustomerId: strconv.FormatInt(seed+20, 10),
+		PaymentType: "pay_at_salon", TotalPriceMinorUnits: 185_000, Currency: "IDR", Status: "pending_hold", ChangeType: "booking.created",
+	}
+	if err = processor.Process(context.Background(), bookingRecord(t, message, "booking.created", uuid.NewString(), seed)); err != nil {
+		t.Fatal(err)
+	}
+
+	var count int
+	if err = pool.QueryRow(context.Background(), `SELECT count(*) FROM payments WHERE booking_id=$1`, bookingID).Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Fatalf("pending hold created %d payment projections", count)
+	}
+}
+
 func bookingRecord(t *testing.T, message *bookingeventsv1.BookingChanged, eventType, eventID string, offset int64) *kgo.Record {
 	t.Helper()
 	payload, err := proto.Marshal(message)
