@@ -4,7 +4,7 @@ go 1.26.6
 
 require (
 	github.com/twmb/franz-go v1.21.6
-	github.com/twmb/franz-go/pkg/kadm v1.17.2
+	github.com/twmb/franz-go/pkg/kadm v1.18.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
