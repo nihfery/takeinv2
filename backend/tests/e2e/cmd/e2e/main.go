@@ -300,6 +300,35 @@ func (r *runner) catalog() error {
 	if err = response.expect(http.StatusForbidden); err != nil {
 		return fmt.Errorf("cross-provider branch authorization: %w", err)
 	}
+	response, err = admin.do(r.ctx, http.MethodPost, "/api/admin/service-categories", map[string]any{
+		"name": "E2E Category " + r.suffix, "slug": "e2e-category-" + r.suffix,
+		"description": "Isolated E2E parent category", "status": "active",
+	}, nil)
+	if err != nil {
+		return err
+	}
+	if err = response.expect(http.StatusCreated); err != nil {
+		return fmt.Errorf("create E2E service category: %w", err)
+	}
+	parentCategoryID := number(nestedMap(response.body, "data")["id"])
+	if parentCategoryID <= 0 {
+		return errors.New("E2E parent service category did not return an identifier")
+	}
+	serviceCategoryName := "E2E Subcategory " + r.suffix
+	response, err = admin.do(r.ctx, http.MethodPost, "/api/admin/service-categories", map[string]any{
+		"parent_id": parentCategoryID, "name": serviceCategoryName, "slug": "e2e-subcategory-" + r.suffix,
+		"description": "Isolated E2E service subcategory", "status": "active",
+	}, nil)
+	if err != nil {
+		return err
+	}
+	if err = response.expect(http.StatusCreated); err != nil {
+		return fmt.Errorf("create E2E service subcategory: %w", err)
+	}
+	serviceCategoryID := number(nestedMap(response.body, "data")["id"])
+	if serviceCategoryID <= 0 {
+		return errors.New("E2E service subcategory did not return an identifier")
+	}
 	response, err = r.api.do(r.ctx, http.MethodGet, "/api/categories", nil, nil)
 	if err != nil {
 		return err
@@ -307,21 +336,20 @@ func (r *runner) catalog() error {
 	if err = response.expect(http.StatusOK); err != nil {
 		return err
 	}
-	var serviceCategoryID int64
-	serviceCategoryName := ""
+	categoryVisible := false
 	if categories, ok := response.body["data"].([]any); ok {
 		for _, rawCategory := range categories {
 			category, categoryOK := rawCategory.(map[string]any)
-			if !categoryOK || number(category["parent_id"]) <= 0 || stringValue(category["status"]) != "active" {
+			if !categoryOK || number(category["id"]) != serviceCategoryID {
 				continue
 			}
-			serviceCategoryID = number(category["id"])
-			serviceCategoryName = stringValue(category["name"])
+			categoryVisible = number(category["parent_id"]) == parentCategoryID &&
+				stringValue(category["name"]) == serviceCategoryName && stringValue(category["status"]) == "active"
 			break
 		}
 	}
-	if serviceCategoryID <= 0 || serviceCategoryName == "" {
-		return errors.New("public catalog did not return an active service subcategory")
+	if !categoryVisible {
+		return errors.New("public catalog did not return the active E2E service subcategory")
 	}
 	servicePayload := map[string]any{"title": "E2E Haircut " + r.suffix, "category": serviceCategoryName, "category_id": serviceCategoryID, "price": 150000, "estimated_duration": 30, "maximum_duration": 30, "is_queue_enabled": true, "is_scheduled_enabled": true, "branch_ids": []int64{r.branchID}, "status": "active"}
 	response, err = r.api.withToken(r.provider.token).do(r.ctx, http.MethodPost, "/api/provider/services", servicePayload, nil)
