@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 
 const dashboardUrl = process.env.NEXT_PUBLIC_PROVIDER_DASHBOARD_URL
-  || 'http://127.0.0.1:5175/provider/dashboard';
+  || 'http://127.0.0.1:5175/dashboard/default';
 
 export default async function ProviderDashboardRedirect({ params }) {
   const { section = [] } = await params;
@@ -13,4 +13,3 @@ export default async function ProviderDashboardRedirect({ params }) {
 
   redirect(target.toString());
 }
-

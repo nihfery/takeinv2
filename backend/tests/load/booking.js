@@ -16,6 +16,7 @@ export function setup() {
   const response = http.post(`${baseURL}/api/auth/login`, JSON.stringify({
     email: __ENV.LOGIN_EMAIL || "customer@example.test",
     password: __ENV.LOGIN_PASSWORD || "password123",
+    role: "customer",
   }), { headers: { "Content-Type": "application/json" } });
   const token = response.json("access_token") || response.json("data.access_token");
   if (!token) fail(`login did not return an access token (status ${response.status})`);

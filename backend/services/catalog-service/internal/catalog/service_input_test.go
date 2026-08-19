@@ -24,3 +24,25 @@ func TestServiceInputNormalizeRejectsSubMinorPrecision(t *testing.T) {
 		t.Fatal("sub-minor monetary precision was accepted")
 	}
 }
+
+func TestServiceInputNormalizeRejectsInvalidStatusAndBranch(t *testing.T) {
+	input := ServiceInput{Title: "Hair Cut", Category: "Hair", Status: "deleted", BranchIDs: []int64{84}}
+	if err := input.Normalize(); err == nil {
+		t.Fatal("invalid service status was accepted")
+	}
+
+	input = ServiceInput{Title: "Hair Cut", Category: "Hair", BranchIDs: []int64{0}}
+	if err := input.Normalize(); err == nil {
+		t.Fatal("invalid branch identifier was accepted")
+	}
+}
+
+func TestServiceInputNormalizeDeduplicatesBranches(t *testing.T) {
+	input := ServiceInput{Title: "Hair Cut", Category: "Hair", BranchIDs: []int64{84, 84, 85}}
+	if err := input.Normalize(); err != nil {
+		t.Fatal(err)
+	}
+	if len(input.BranchIDs) != 2 || input.BranchIDs[0] != 84 || input.BranchIDs[1] != 85 {
+		t.Fatalf("unexpected normalized branches: %#v", input.BranchIDs)
+	}
+}

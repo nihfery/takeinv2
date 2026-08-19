@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 
-const ACCESS_COOKIE = 'takein_access_token';
-const REFRESH_COOKIE = 'takein_refresh_token';
+const ACCESS_COOKIE = 'takein_provider_access_token';
+const REFRESH_COOKIE = 'takein_provider_refresh_token';
+const LEGACY_ACCESS_COOKIE = 'takein_access_token';
+const LEGACY_REFRESH_COOKIE = 'takein_refresh_token';
+const PORTAL_ROLE = 'provider';
 const ACCESS_MAX_AGE = 15 * 60;
 const REFRESH_MAX_AGE = 30 * 24 * 60 * 60;
 
@@ -49,12 +52,12 @@ async function refresh(refreshToken) {
   const response = await fetch(`${origin('GO_IDENTITY_URL', 'http://127.0.0.1:18081')}/internal/v1/auth/refresh`, {
     method: 'POST',
     headers: { accept: 'application/json', 'content-type': 'application/json' },
-    body: JSON.stringify({ refresh_token: refreshToken }),
+    body: JSON.stringify({ refresh_token: refreshToken, role: PORTAL_ROLE }),
     cache: 'no-store',
   });
   if (!response.ok) return null;
   const payload = await response.json().catch(() => null);
-  return payload?.access_token && payload?.refresh_token ? payload : null;
+  return payload?.access_token && payload?.refresh_token && payload?.user?.role === PORTAL_ROLE ? payload : null;
 }
 
 function cleanAuthPayload(payload) {
@@ -85,31 +88,53 @@ async function toResponse(backend, authPayload, session, clearSession) {
     response.cookies.set(ACCESS_COOKIE, '', cookieOptions(0));
     response.cookies.set(REFRESH_COOKIE, '', cookieOptions(0));
   }
+  response.cookies.set(LEGACY_ACCESS_COOKIE, '', cookieOptions(0));
+  response.cookies.set(LEGACY_REFRESH_COOKIE, '', cookieOptions(0));
   return response;
+}
+
+function portalAuthBody(route, body) {
+  if (route !== 'auth/login' || !body?.byteLength) return body;
+  try {
+    const payload = JSON.parse(new TextDecoder().decode(body));
+    return JSON.stringify({ ...payload, role: PORTAL_ROLE });
+  } catch {
+    return body;
+  }
 }
 
 async function proxy(request, context) {
   const { path = [] } = await context.params;
   const route = path.join('/');
-  const isAuth = ['auth/login', 'auth/register/customer', 'auth/register/provider'].includes(route);
+  const backendPath = route === 'auth/me' ? ['auth', PORTAL_ROLE, 'me'] : path;
+  if (route === 'auth/register/customer') {
+    return NextResponse.json({ message: 'Customer registration is not available through the provider portal.' }, { status: 403 });
+  }
+  const isAuth = ['auth/login', 'auth/register/provider'].includes(route);
   const isLogout = route === 'auth/logout';
   let accessToken = request.cookies.get(ACCESS_COOKIE)?.value || '';
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value || '';
   const originalBody = request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.arrayBuffer();
-  const body = isLogout ? JSON.stringify({ refresh_token: refreshToken }) : (originalBody?.byteLength ? originalBody : undefined);
-  let backend = await callBackend(request, path, accessToken, body);
+  const body = isLogout ? JSON.stringify({ refresh_token: refreshToken }) : portalAuthBody(route, originalBody);
+  let backend = await callBackend(request, backendPath, accessToken, body);
   let session = null;
   if (backend.status === 401 && refreshToken && !isAuth && !isLogout) {
     session = await refresh(refreshToken);
     if (session) {
       accessToken = session.access_token;
-      backend = await callBackend(request, path, accessToken, body);
+      backend = await callBackend(request, backendPath, accessToken, body);
     }
   }
   let authPayload = null;
   if (isAuth && backend.ok) {
     authPayload = await backend.clone().json().catch(() => null);
-    session = authPayload;
+    if (authPayload?.user?.role === PORTAL_ROLE) {
+      session = authPayload;
+    } else {
+      backend = Response.json({ message: 'This account cannot sign in to the provider portal.' }, { status: 403 });
+      authPayload = null;
+      session = null;
+    }
   }
   return toResponse(backend, authPayload, session, isLogout || (backend.status === 401 && !session));
 }

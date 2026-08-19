@@ -88,6 +88,25 @@ func (input *ServiceInput) Normalize() error {
 	if input.Slug == "" {
 		return errors.New("title cannot produce an empty slug")
 	}
+	if input.Status == "" {
+		input.Status = "active"
+	}
+	if input.Status != "active" && input.Status != "inactive" {
+		return errors.New("service status must be active or inactive")
+	}
+	uniqueBranchIDs := make([]int64, 0, len(input.BranchIDs))
+	seenBranchIDs := make(map[int64]struct{}, len(input.BranchIDs))
+	for _, branchID := range input.BranchIDs {
+		if branchID <= 0 {
+			return errors.New("branch_ids must contain positive identifiers")
+		}
+		if _, exists := seenBranchIDs[branchID]; exists {
+			continue
+		}
+		seenBranchIDs[branchID] = struct{}{}
+		uniqueBranchIDs = append(uniqueBranchIDs, branchID)
+	}
+	input.BranchIDs = uniqueBranchIDs
 	return nil
 }
 
@@ -199,15 +218,15 @@ type Repository interface {
 	UpdateCategory(context.Context, int64, CategoryInput) (map[string]any, error)
 	ToggleCategory(context.Context, int64, string) (map[string]any, error)
 	DeleteCategory(context.Context, int64) error
-	ListServices(context.Context, *int64, bool) ([]map[string]any, error)
+	ListServices(context.Context, *int64, *int64, bool) ([]map[string]any, error)
 	ListBranchServices(context.Context, int64) ([]map[string]any, error)
-	Service(context.Context, int64, *int64, bool) (map[string]any, error)
+	Service(context.Context, int64, *int64, *int64, bool) (map[string]any, error)
 	CreateService(context.Context, int64, ServiceInput) (map[string]any, error)
-	UpdateService(context.Context, int64, int64, ServiceInput) (map[string]any, error)
-	UpdateServiceJSON(context.Context, int64, int64, string, any) (map[string]any, error)
-	UpdateServiceGallery(context.Context, int64, int64, []string, string) (map[string]any, error)
-	ToggleService(context.Context, int64, *int64) (map[string]any, error)
-	DeleteService(context.Context, int64, int64) error
+	UpdateService(context.Context, int64, int64, *int64, ServiceInput) (map[string]any, error)
+	UpdateServiceJSON(context.Context, int64, int64, *int64, string, any) (map[string]any, error)
+	UpdateServiceGallery(context.Context, int64, int64, *int64, []string, string) (map[string]any, error)
+	ToggleService(context.Context, int64, *int64, *int64) (map[string]any, error)
+	DeleteService(context.Context, int64, int64, *int64) error
 	ListCoupons(context.Context, bool) ([]map[string]any, error)
 	Coupon(context.Context, int64) (map[string]any, error)
 	CouponByCode(context.Context, string) (map[string]any, error)

@@ -52,7 +52,7 @@ export async function loginProvider({ email, password }) {
 }
 
 export async function currentProvider() {
-    return apiRequest('/api/auth/me');
+    return apiRequest('/api/auth/provider/me');
 }
 
 export async function logoutProvider() {

@@ -4,9 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { currentProvider, loginProvider, registerProvider } from './api';
 
-const providerDashboardUrl = process.env.NEXT_PUBLIC_PROVIDER_DASHBOARD_URL || 'http://127.0.0.1:5175/provider/dashboard';
+const providerDashboardUrl = process.env.NEXT_PUBLIC_PROVIDER_DASHBOARD_URL || 'http://127.0.0.1:5175/dashboard/default';
 const providerVerificationUrl = process.env.NEXT_PUBLIC_PROVIDER_VERIFICATION_URL || 'http://127.0.0.1:5175/provider/verification';
-const providerLoginUrl = process.env.NEXT_PUBLIC_PROVIDER_LOGIN_URL || 'http://127.0.0.1:5175/provider/login';
+const providerLoginUrl = process.env.NEXT_PUBLIC_PROVIDER_LOGIN_URL || 'http://127.0.0.1:5175/auth/v1/login';
 
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 

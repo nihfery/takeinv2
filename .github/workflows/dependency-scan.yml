@@ -26,6 +26,7 @@ jobs:
           - apps/customer-web
           - apps/provider-landing
           - apps/provider-console
+          - apps/provider-web
           - apps/admin-web
     defaults:
       run:

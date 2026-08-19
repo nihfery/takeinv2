@@ -219,6 +219,99 @@
         }
       }
     },
+    "/auth/customer/me": {
+      "get": {
+        "operationId": "getCurrentCustomer",
+        "summary": "Return the authenticated customer",
+        "x-authentication": "bearerAuth",
+        "x-required-role": "customer",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated customer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials or unauthenticated"
+          },
+          "403": {
+            "description": "Authenticated account is not a customer"
+          }
+        }
+      }
+    },
+    "/auth/provider/me": {
+      "get": {
+        "operationId": "getCurrentProvider",
+        "summary": "Return the authenticated provider",
+        "x-authentication": "bearerAuth",
+        "x-required-role": "provider",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated provider",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials or unauthenticated"
+          },
+          "403": {
+            "description": "Authenticated account is not a provider"
+          }
+        }
+      }
+    },
+    "/auth/admin/me": {
+      "get": {
+        "operationId": "getCurrentAdmin",
+        "summary": "Return the authenticated administrator",
+        "x-authentication": "bearerAuth",
+        "x-required-role": "admin",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated administrator",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonObject"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials or unauthenticated"
+          },
+          "403": {
+            "description": "Authenticated account is not an administrator"
+          }
+        }
+      }
+    },
     "/auth/logout": {
       "post": {
         "operationId": "logout",
@@ -407,7 +500,8 @@
         "additionalProperties": false,
         "required": [
           "email",
-          "password"
+          "password",
+          "role"
         ],
         "properties": {
           "email": {
@@ -418,15 +512,11 @@
             "type": "string"
           },
           "role": {
-            "type": [
-              "string",
-              "null"
-            ],
+            "type": "string",
             "enum": [
               "admin",
               "provider",
-              "customer",
-              null
+              "customer"
             ]
           },
           "remember": {

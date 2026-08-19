@@ -12,11 +12,11 @@ import (
 )
 
 const createProviderBranch = `-- name: CreateProviderBranch :one
-INSERT INTO provider_branches (provider_id, branch_name, email, phone_code, phone_number, address, country_id, state_id, city_id, latitude, longitude, zip_code, working_start_hour, working_end_hour, working_days, holidays, image_object_id, image_object_ids, status)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+INSERT INTO provider_branches (provider_id, branch_name, email, phone_code, phone_number, address, country_id, state_id, city_id, latitude, longitude, zip_code, working_start_hour, working_end_hour, working_days, holidays, image_object_id, image_object_ids, status, description, branch_type, timezone, opened_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
 RETURNING id, provider_id, branch_name, email, phone_code, phone_number, address, country_id, state_id, city_id,
           latitude, longitude, zip_code, working_start_hour, working_end_hour, working_days, holidays,
-          image_object_id, image_object_ids, status, created_at, updated_at
+          image_object_id, image_object_ids, status, created_at, updated_at, description, branch_type, timezone, opened_at
 `
 
 type CreateProviderBranchParams struct {
@@ -39,6 +39,10 @@ type CreateProviderBranchParams struct {
 	ImageObjectID    pgtype.UUID    `json:"image_object_id"`
 	ImageObjectIds   []byte         `json:"image_object_ids"`
 	Status           string         `json:"status"`
+	Description      string         `json:"description"`
+	BranchType       string         `json:"branch_type"`
+	Timezone         string         `json:"timezone"`
+	OpenedAt         pgtype.Date    `json:"opened_at"`
 }
 
 func (q *Queries) CreateProviderBranch(ctx context.Context, arg CreateProviderBranchParams) (ProviderBranch, error) {
@@ -62,6 +66,10 @@ func (q *Queries) CreateProviderBranch(ctx context.Context, arg CreateProviderBr
 		arg.ImageObjectID,
 		arg.ImageObjectIds,
 		arg.Status,
+		arg.Description,
+		arg.BranchType,
+		arg.Timezone,
+		arg.OpenedAt,
 	)
 	var i ProviderBranch
 	err := row.Scan(
@@ -87,6 +95,10 @@ func (q *Queries) CreateProviderBranch(ctx context.Context, arg CreateProviderBr
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Description,
+		&i.BranchType,
+		&i.Timezone,
+		&i.OpenedAt,
 	)
 	return i, err
 }
@@ -94,7 +106,7 @@ func (q *Queries) CreateProviderBranch(ctx context.Context, arg CreateProviderBr
 const getBranchInProviderScope = `-- name: GetBranchInProviderScope :one
 SELECT id, provider_id, branch_name, email, phone_code, phone_number, address, country_id, state_id, city_id,
        latitude, longitude, zip_code, working_start_hour, working_end_hour, working_days, holidays,
-       image_object_id, image_object_ids, status, created_at, updated_at
+       image_object_id, image_object_ids, status, created_at, updated_at, description, branch_type, timezone, opened_at
 FROM provider_branches WHERE id = $1 AND provider_id = $2
 `
 
@@ -129,8 +141,30 @@ func (q *Queries) GetBranchInProviderScope(ctx context.Context, arg GetBranchInP
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Description,
+		&i.BranchType,
+		&i.Timezone,
+		&i.OpenedAt,
 	)
 	return i, err
+}
+
+const getBranchRoleName = `-- name: GetBranchRoleName :one
+SELECT role_name FROM provider_roles
+WHERE provider_id = $1 AND identity_user_id = $2 AND status = 'active'
+ORDER BY id LIMIT 1
+`
+
+type GetBranchRoleNameParams struct {
+	ProviderID     int64       `json:"provider_id"`
+	IdentityUserID pgtype.Int8 `json:"identity_user_id"`
+}
+
+func (q *Queries) GetBranchRoleName(ctx context.Context, arg GetBranchRoleNameParams) (string, error) {
+	row := q.db.QueryRow(ctx, getBranchRoleName, arg.ProviderID, arg.IdentityUserID)
+	var role_name string
+	err := row.Scan(&role_name)
+	return role_name, err
 }
 
 const getProviderByID = `-- name: GetProviderByID :one
@@ -285,7 +319,7 @@ func (q *Queries) ListEligibleStaff(ctx context.Context, arg ListEligibleStaffPa
 const listProviderBranches = `-- name: ListProviderBranches :many
 SELECT id, provider_id, branch_name, email, phone_code, phone_number, address, country_id, state_id, city_id,
        latitude, longitude, zip_code, working_start_hour, working_end_hour, working_days, holidays,
-       image_object_id, image_object_ids, status, created_at, updated_at
+       image_object_id, image_object_ids, status, created_at, updated_at, description, branch_type, timezone, opened_at
 FROM provider_branches WHERE provider_id = $1 ORDER BY id LIMIT $2 OFFSET $3
 `
 
@@ -327,6 +361,10 @@ func (q *Queries) ListProviderBranches(ctx context.Context, arg ListProviderBran
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Description,
+			&i.BranchType,
+			&i.Timezone,
+			&i.OpenedAt,
 		); err != nil {
 			return nil, err
 		}

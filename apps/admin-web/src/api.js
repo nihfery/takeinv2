@@ -37,7 +37,7 @@ export function loginAdmin(email, password) {
 }
 
 export function currentAdmin() {
-  return apiRequest('/api/auth/me');
+  return apiRequest('/api/auth/admin/me');
 }
 
 export function logoutAdmin() {

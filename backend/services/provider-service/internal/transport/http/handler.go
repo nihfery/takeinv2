@@ -27,6 +27,8 @@ func (h *Handler) RegisterRoutes(engine *gin.Engine) {
 	api := engine.Group("/api")
 	owned := api.Group("/provider", h.validator.Middleware("provider"))
 	owned.GET("/profile", h.showProfile)
+	owned.GET("/branch-profile", h.showBranchProfile)
+	owned.PUT("/branch-profile", h.updateBranchProfile)
 	owned.PUT("/profile", h.updateProfile)
 	owned.POST("/profile/documents", h.updateDocuments)
 	owned.GET("/profile/documents/:document", h.document)
@@ -74,6 +76,22 @@ func (h *Handler) showProfile(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": profile, "identity": identityValue})
+}
+func (h *Handler) showBranchProfile(c *gin.Context) {
+	value, err := h.service.ResolveBranchProfile(c.Request.Context(), actor(c))
+	respond(c, value, err)
+}
+func (h *Handler) updateBranchProfile(c *gin.Context) {
+	var input provider.BranchProfileUpdateInput
+	if !bind(c, &input) {
+		return
+	}
+	value, err := h.service.UpdateBranchProfile(c.Request.Context(), actor(c), input)
+	if err != nil {
+		respond(c, nil, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Branch profile updated.", "data": value})
 }
 func (h *Handler) updateProfile(c *gin.Context) {
 	profile, err := h.service.ResolveProfile(c.Request.Context(), actor(c))
@@ -174,9 +192,19 @@ func (h *Handler) document(c *gin.Context) {
 }
 
 func (h *Handler) listBranches(c *gin.Context) {
-	profile, err := h.service.ResolveProfile(c.Request.Context(), actor(c))
+	requestActor := actor(c)
+	profile, err := h.service.ResolveProfile(c.Request.Context(), requestActor)
 	if err != nil {
 		respond(c, nil, err)
+		return
+	}
+	if requestActor.BranchID > 0 {
+		item, branchErr := h.service.ScopedBranch(c.Request.Context(), requestActor, requestActor.BranchID)
+		if branchErr != nil {
+			respond(c, nil, branchErr)
+			return
+		}
+		respond(c, []provider.Branch{item}, nil)
 		return
 	}
 	items, err := h.service.Repository().ListBranches(c.Request.Context(), profile.ID)
@@ -285,16 +313,28 @@ func (h *Handler) assignStaff(c *gin.Context) {
 }
 
 func (h *Handler) listStaff(c *gin.Context) {
-	profile, err := h.service.ResolveProfile(c.Request.Context(), actor(c))
+	requestActor, ok := h.authorizedProviderAction(c, "staffs")
+	if !ok {
+		return
+	}
+	profile, err := h.service.ResolveProfile(c.Request.Context(), requestActor)
 	if err != nil {
 		respond(c, nil, err)
 		return
 	}
-	items, err := h.service.Repository().ListStaff(c.Request.Context(), profile.ID)
+	var branchID *int64
+	if requestActor.BranchID > 0 {
+		branchID = &requestActor.BranchID
+	}
+	items, err := h.service.Repository().ListStaff(c.Request.Context(), profile.ID, branchID)
 	respond(c, items, err)
 }
 func (h *Handler) createStaff(c *gin.Context) {
-	profile, err := h.service.ResolveProfile(c.Request.Context(), actor(c))
+	requestActor, ok := h.authorizedProviderAction(c, "staffs")
+	if !ok {
+		return
+	}
+	profile, err := h.service.ResolveProfile(c.Request.Context(), requestActor)
 	if err != nil {
 		respond(c, nil, err)
 		return
@@ -316,7 +356,7 @@ func (h *Handler) createStaff(c *gin.Context) {
 		respond(c, nil, err)
 		return
 	}
-	if err = provider.CheckScope(actor(c), profile.ID, input.BranchID); err != nil {
+	if err = provider.CheckScope(requestActor, profile.ID, input.BranchID); err != nil {
 		respond(c, nil, err)
 		return
 	}
@@ -324,19 +364,27 @@ func (h *Handler) createStaff(c *gin.Context) {
 	created(c, item, err)
 }
 func (h *Handler) showStaff(c *gin.Context) {
+	requestActor, authorized := h.authorizedProviderAction(c, "staffs")
+	if !authorized {
+		return
+	}
 	id, ok := idParam(c, "staff")
 	if !ok {
 		return
 	}
-	item, err := h.service.ScopedStaff(c.Request.Context(), actor(c), id)
+	item, err := h.service.ScopedStaff(c.Request.Context(), requestActor, id)
 	respond(c, item, err)
 }
 func (h *Handler) updateStaff(c *gin.Context) {
+	requestActor, authorized := h.authorizedProviderAction(c, "staffs")
+	if !authorized {
+		return
+	}
 	id, ok := idParam(c, "staff")
 	if !ok {
 		return
 	}
-	item, err := h.service.ScopedStaff(c.Request.Context(), actor(c), id)
+	item, err := h.service.ScopedStaff(c.Request.Context(), requestActor, id)
 	if err != nil {
 		respond(c, nil, err)
 		return
@@ -358,7 +406,7 @@ func (h *Handler) updateStaff(c *gin.Context) {
 		respond(c, nil, err)
 		return
 	}
-	if err = provider.CheckScope(actor(c), item.ProviderID, input.BranchID); err != nil {
+	if err = provider.CheckScope(requestActor, item.ProviderID, input.BranchID); err != nil {
 		respond(c, nil, err)
 		return
 	}
@@ -366,11 +414,15 @@ func (h *Handler) updateStaff(c *gin.Context) {
 	respond(c, item, err)
 }
 func (h *Handler) deleteStaff(c *gin.Context) {
+	requestActor, authorized := h.authorizedProviderAction(c, "staffs")
+	if !authorized {
+		return
+	}
 	id, ok := idParam(c, "staff")
 	if !ok {
 		return
 	}
-	item, err := h.service.ScopedStaff(c.Request.Context(), actor(c), id)
+	item, err := h.service.ScopedStaff(c.Request.Context(), requestActor, id)
 	if err == nil {
 		err = h.service.Repository().DeleteStaff(c.Request.Context(), item.ProviderID, id)
 	}
@@ -430,9 +482,8 @@ func (h *Handler) replaceStaffSchedules(c *gin.Context) {
 }
 
 func (h *Handler) authorizedStaffResource(c *gin.Context, permission string) (int64, bool) {
-	requestActor := actor(c)
-	if requestActor.Role != "provider" || requestActor.BranchID > 0 && !provider.HasPermission(requestActor, permission) {
-		respond(c, nil, provider.ErrForbidden)
+	requestActor, authorized := h.authorizedProviderAction(c, permission)
+	if !authorized {
 		return 0, false
 	}
 	staffID, ok := idParam(c, "staff")
@@ -444,6 +495,15 @@ func (h *Handler) authorizedStaffResource(c *gin.Context, permission string) (in
 		return 0, false
 	}
 	return staffID, true
+}
+
+func (h *Handler) authorizedProviderAction(c *gin.Context, permission string) (provider.Actor, bool) {
+	requestActor := actor(c)
+	if requestActor.Role != "provider" || requestActor.BranchID > 0 && !provider.HasPermission(requestActor, permission) {
+		respond(c, nil, provider.ErrForbidden)
+		return provider.Actor{}, false
+	}
+	return requestActor, true
 }
 
 func (h *Handler) listRoles(c *gin.Context) {

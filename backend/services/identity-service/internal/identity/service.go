@@ -59,8 +59,12 @@ func (s *Service) Register(ctx context.Context, input Registration, correlationI
 	return user, nil
 }
 
-func (s *Service) Login(ctx context.Context, email, password string, metadata SessionMetadata) (User, security.TokenPair, error) {
+func (s *Service) Login(ctx context.Context, email, password, expectedRole string, metadata SessionMetadata) (User, security.TokenPair, error) {
 	domainmetrics.AuthLogin()
+	if expectedRole != "admin" && expectedRole != "provider" && expectedRole != "customer" {
+		domainmetrics.AuthLoginFailed()
+		return User{}, security.TokenPair{}, ErrInvalidCredentials
+	}
 	user, err := s.repository.FindByEmail(ctx, strings.ToLower(strings.TrimSpace(email)))
 	if err != nil {
 		domainmetrics.AuthLoginFailed()
@@ -68,6 +72,10 @@ func (s *Service) Login(ctx context.Context, email, password string, metadata Se
 	}
 	valid, rehash := s.hasher.Verify(password, user.PasswordHash)
 	if !valid {
+		domainmetrics.AuthLoginFailed()
+		return User{}, security.TokenPair{}, ErrInvalidCredentials
+	}
+	if user.Role != expectedRole {
 		domainmetrics.AuthLoginFailed()
 		return User{}, security.TokenPair{}, ErrInvalidCredentials
 	}
@@ -92,13 +100,19 @@ func (s *Service) Login(ctx context.Context, email, password string, metadata Se
 	return user, pair, nil
 }
 
-func (s *Service) Refresh(ctx context.Context, raw string, metadata SessionMetadata) (User, security.TokenPair, error) {
+func (s *Service) Refresh(ctx context.Context, raw, expectedRole string, metadata SessionMetadata) (User, security.TokenPair, error) {
+	if expectedRole != "admin" && expectedRole != "provider" && expectedRole != "customer" {
+		return User{}, security.TokenPair{}, ErrInvalidCredentials
+	}
 	refresh, newSession, err := s.tokens.NewRefresh(uuid.Nil)
 	if err != nil {
 		return User{}, security.TokenPair{}, err
 	}
-	user, storedSession, err := s.repository.RotateSession(ctx, security.HashRefresh(raw), domainSession(newSession, 0), metadata)
+	user, storedSession, err := s.repository.RotateSession(ctx, security.HashRefresh(raw), expectedRole, domainSession(newSession, 0), metadata)
 	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return User{}, security.TokenPair{}, ErrInvalidCredentials
+		}
 		return User{}, security.TokenPair{}, err
 	}
 	access, expiresIn, err := s.tokens.IssueAccess(tokenSubject(user))

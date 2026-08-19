@@ -40,7 +40,7 @@ export async function apiRequest(path, options = {}) {
 }
 
 export function currentProvider() {
-  return apiRequest('/api/auth/me');
+  return apiRequest('/api/auth/provider/me');
 }
 
 export function loginProvider(email, password) {

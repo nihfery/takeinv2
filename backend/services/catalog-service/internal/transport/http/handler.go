@@ -129,7 +129,7 @@ func (h *Handler) staff(c *gin.Context) {
 	respond(c, item, err)
 }
 func (h *Handler) publicServices(c *gin.Context) {
-	items, err := h.service.Repository().ListServices(c.Request.Context(), nil, true)
+	items, err := h.service.Repository().ListServices(c.Request.Context(), nil, nil, true)
 	respond(c, items, err)
 }
 func (h *Handler) publicService(c *gin.Context) {
@@ -137,7 +137,7 @@ func (h *Handler) publicService(c *gin.Context) {
 	if !ok {
 		return
 	}
-	item, err := h.service.Repository().Service(c.Request.Context(), id, nil, true)
+	item, err := h.service.Repository().Service(c.Request.Context(), id, nil, nil, true)
 	respond(c, item, err)
 }
 func (h *Handler) providers(c *gin.Context) {
@@ -165,15 +165,15 @@ func (h *Handler) validateCoupon(c *gin.Context) {
 }
 
 func (h *Handler) providerServices(c *gin.Context) {
-	id, ok := providerID(c)
+	id, branchID, ok := providerScope(c, "services")
 	if !ok {
 		return
 	}
-	items, err := h.service.Repository().ListServices(c.Request.Context(), &id, false)
+	items, err := h.service.Repository().ListServices(c.Request.Context(), &id, branchID, false)
 	respond(c, items, err)
 }
 func (h *Handler) createService(c *gin.Context) {
-	providerID, ok := providerID(c)
+	providerID, branchID, ok := providerScope(c, "services")
 	if !ok {
 		return
 	}
@@ -181,10 +181,16 @@ func (h *Handler) createService(c *gin.Context) {
 	if !bind(c, &input) {
 		return
 	}
+	if branchID != nil {
+		input.BranchIDs = []int64{*branchID}
+	}
 	if objectID, ok := h.upload(c, "gallery_image", "service-gallery", 2<<20); !ok {
 		return
 	} else if objectID != "" {
 		input.GalleryObjectIDs = []string{objectID}
+	}
+	if !h.resolveServiceCategory(c, &input) {
+		return
 	}
 	if err := input.Normalize(); err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"message": "The given data was invalid.", "errors": gin.H{"request": []string{err.Error()}}})
@@ -202,7 +208,7 @@ func (h *Handler) createService(c *gin.Context) {
 	created(c, item, err)
 }
 func (h *Handler) providerService(c *gin.Context) {
-	providerID, ok := providerID(c)
+	providerID, branchID, ok := providerScope(c, "services")
 	if !ok {
 		return
 	}
@@ -210,11 +216,11 @@ func (h *Handler) providerService(c *gin.Context) {
 	if !valid {
 		return
 	}
-	item, err := h.service.Repository().Service(c.Request.Context(), id, &providerID, false)
+	item, err := h.service.Repository().Service(c.Request.Context(), id, &providerID, branchID, false)
 	respond(c, item, err)
 }
 func (h *Handler) updateService(c *gin.Context) {
-	providerID, ok := providerID(c)
+	providerID, branchID, ok := providerScope(c, "services")
 	if !ok {
 		return
 	}
@@ -226,10 +232,16 @@ func (h *Handler) updateService(c *gin.Context) {
 	if !bind(c, &input) {
 		return
 	}
+	if branchID != nil {
+		input.BranchIDs = []int64{*branchID}
+	}
 	if objectID, ok := h.upload(c, "gallery_image", "service-gallery", 2<<20); !ok {
 		return
 	} else if objectID != "" {
 		input.GalleryObjectIDs = []string{objectID}
+	}
+	if !h.resolveServiceCategory(c, &input) {
+		return
 	}
 	if err := input.Normalize(); err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"message": "The given data was invalid.", "errors": gin.H{"request": []string{err.Error()}}})
@@ -243,11 +255,11 @@ func (h *Handler) updateService(c *gin.Context) {
 		respond(c, nil, err)
 		return
 	}
-	item, err := h.service.Repository().UpdateService(c.Request.Context(), providerID, id, input)
+	item, err := h.service.Repository().UpdateService(c.Request.Context(), providerID, id, branchID, input)
 	respond(c, item, err)
 }
 func (h *Handler) deleteService(c *gin.Context) {
-	providerID, ok := providerID(c)
+	providerID, branchID, ok := providerScope(c, "services")
 	if !ok {
 		return
 	}
@@ -255,12 +267,12 @@ func (h *Handler) deleteService(c *gin.Context) {
 	if !valid {
 		return
 	}
-	err := h.service.Repository().DeleteService(c.Request.Context(), providerID, id)
+	err := h.service.Repository().DeleteService(c.Request.Context(), providerID, id, branchID)
 	noContent(c, err)
 }
 func (h *Handler) updateServiceBranches(c *gin.Context) { h.updateJSON(c, "branch_ids") }
 func (h *Handler) updateServiceGallery(c *gin.Context) {
-	providerID, ok := providerID(c)
+	providerID, branchID, ok := providerScope(c, "services")
 	if !ok {
 		return
 	}
@@ -284,11 +296,11 @@ func (h *Handler) updateServiceGallery(c *gin.Context) {
 		respond(c, nil, err)
 		return
 	}
-	item, err := h.service.Repository().UpdateServiceGallery(c.Request.Context(), providerID, id, request.GalleryObjectIDs, request.VideoURL)
+	item, err := h.service.Repository().UpdateServiceGallery(c.Request.Context(), providerID, id, branchID, request.GalleryObjectIDs, request.VideoURL)
 	respond(c, item, err)
 }
 func (h *Handler) updateJSON(c *gin.Context, field string) {
-	providerID, ok := providerID(c)
+	providerID, branchID, ok := providerScope(c, "services")
 	if !ok {
 		return
 	}
@@ -306,18 +318,22 @@ func (h *Handler) updateJSON(c *gin.Context, field string) {
 		return
 	}
 	if field == "branch_ids" {
-		branchIDs, err := numericIDs(value)
-		if err != nil {
-			c.JSON(http.StatusUnprocessableEntity, gin.H{"message": "The given data was invalid.", "errors": gin.H{"branch_ids": []string{"Branch IDs must be positive integers."}}})
-			return
+		if branchID != nil {
+			value = []int64{*branchID}
+		} else {
+			branchIDs, err := numericIDs(value)
+			if err != nil {
+				c.JSON(http.StatusUnprocessableEntity, gin.H{"message": "The given data was invalid.", "errors": gin.H{"branch_ids": []string{"Branch IDs must be positive integers."}}})
+				return
+			}
+			if err = h.service.ValidateBranches(c.Request.Context(), providerID, branchIDs); err != nil {
+				respond(c, nil, err)
+				return
+			}
+			value = branchIDs
 		}
-		if err = h.service.ValidateBranches(c.Request.Context(), providerID, branchIDs); err != nil {
-			respond(c, nil, err)
-			return
-		}
-		value = branchIDs
 	}
-	item, err := h.service.Repository().UpdateServiceJSON(c.Request.Context(), providerID, id, field, value)
+	item, err := h.service.Repository().UpdateServiceJSON(c.Request.Context(), providerID, id, branchID, field, value)
 	respond(c, item, err)
 }
 
@@ -351,8 +367,43 @@ func numericIDs(value any) ([]int64, error) {
 	}
 	return result, nil
 }
+
+func (h *Handler) resolveServiceCategory(c *gin.Context, input *catalog.ServiceInput) bool {
+	if input.CategoryID == nil || *input.CategoryID <= 0 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"message": "The given data was invalid.",
+			"errors":  gin.H{"category_id": []string{"Select an active service subcategory."}},
+		})
+		return false
+	}
+	category, err := h.service.Repository().Category(c.Request.Context(), *input.CategoryID)
+	if err != nil {
+		if errors.Is(err, catalog.ErrNotFound) {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{
+				"message": "The given data was invalid.",
+				"errors":  gin.H{"category_id": []string{"The selected service subcategory does not exist."}},
+			})
+			return false
+		}
+		respond(c, nil, err)
+		return false
+	}
+	name, nameOK := category["name"].(string)
+	status, statusOK := category["status"].(string)
+	parentID, hasParent := category["parent_id"]
+	if !nameOK || strings.TrimSpace(name) == "" || !statusOK || status != "active" || !hasParent || parentID == nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"message": "The given data was invalid.",
+			"errors":  gin.H{"category_id": []string{"Select an active service subcategory."}},
+		})
+		return false
+	}
+	input.Category = name
+	return true
+}
+
 func (h *Handler) providerToggleService(c *gin.Context) {
-	providerID, ok := providerID(c)
+	providerID, branchID, ok := providerScope(c, "services")
 	if !ok {
 		return
 	}
@@ -360,7 +411,7 @@ func (h *Handler) providerToggleService(c *gin.Context) {
 	if !valid {
 		return
 	}
-	item, err := h.service.Repository().ToggleService(c.Request.Context(), id, &providerID)
+	item, err := h.service.Repository().ToggleService(c.Request.Context(), id, &providerID, branchID)
 	respond(c, item, err)
 }
 
@@ -420,7 +471,7 @@ func (h *Handler) toggleCategoryStatus(c *gin.Context) {
 	respond(c, item, err)
 }
 func (h *Handler) adminServices(c *gin.Context) {
-	items, err := h.service.Repository().ListServices(c.Request.Context(), nil, false)
+	items, err := h.service.Repository().ListServices(c.Request.Context(), nil, nil, false)
 	respond(c, items, err)
 }
 func (h *Handler) adminService(c *gin.Context) {
@@ -428,7 +479,7 @@ func (h *Handler) adminService(c *gin.Context) {
 	if !ok {
 		return
 	}
-	item, err := h.service.Repository().Service(c.Request.Context(), id, nil, false)
+	item, err := h.service.Repository().Service(c.Request.Context(), id, nil, nil, false)
 	respond(c, item, err)
 }
 func (h *Handler) adminToggleService(c *gin.Context) {
@@ -436,7 +487,7 @@ func (h *Handler) adminToggleService(c *gin.Context) {
 	if !ok {
 		return
 	}
-	item, err := h.service.Repository().ToggleService(c.Request.Context(), id, nil)
+	item, err := h.service.Repository().ToggleService(c.Request.Context(), id, nil, nil)
 	respond(c, item, err)
 }
 func (h *Handler) adminCoupons(c *gin.Context) {
@@ -504,18 +555,39 @@ func (h *Handler) deleteCoupon(c *gin.Context) {
 	noContent(c, h.service.Repository().DeleteCoupon(c.Request.Context(), id))
 }
 
-func providerID(c *gin.Context) (int64, bool) {
+func providerScope(c *gin.Context, permission string) (int64, *int64, bool) {
 	actor, ok := authcontext.ActorFrom(c.Request.Context())
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "Unauthenticated."})
-		return 0, false
+		return 0, nil, false
 	}
 	id, err := strconv.ParseInt(actor.ProviderID, 10, 64)
 	if err != nil || id <= 0 {
 		c.JSON(http.StatusForbidden, gin.H{"message": "Provider context is required."})
-		return 0, false
+		return 0, nil, false
 	}
-	return id, true
+	if strings.TrimSpace(actor.BranchID) == "" {
+		return id, nil, true
+	}
+	branchID, err := strconv.ParseInt(actor.BranchID, 10, 64)
+	if err != nil || branchID <= 0 {
+		c.JSON(http.StatusForbidden, gin.H{"message": "Valid branch context is required."})
+		return 0, nil, false
+	}
+	if permission != "" && !hasPermission(actor.Permissions, permission) {
+		c.JSON(http.StatusForbidden, gin.H{"message": "This branch account cannot manage services."})
+		return 0, nil, false
+	}
+	return id, &branchID, true
+}
+
+func hasPermission(permissions []string, expected string) bool {
+	for _, permission := range permissions {
+		if permission == expected {
+			return true
+		}
+	}
+	return false
 }
 func idParam(c *gin.Context, name string) (int64, bool) {
 	id, err := strconv.ParseInt(c.Param(name), 10, 64)

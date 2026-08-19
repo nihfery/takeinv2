@@ -60,11 +60,11 @@ const apiBaseUrl = '/api';
 const providerLoginPath = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_PROVIDER_LOGIN_PATH) || '/register?mode=login';
 const providerConsoleLoginUrl = localizeLoopbackUrl(
     (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_PROVIDER_LOGIN_URL)
-    || 'http://127.0.0.1:5175/provider/login',
+    || 'http://127.0.0.1:5175/auth/v1/login',
 );
 const providerDashboardUrl = localizeLoopbackUrl(
     (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_PROVIDER_DASHBOARD_URL)
-    || 'http://127.0.0.1:5175/provider/dashboard',
+    || 'http://127.0.0.1:5175/dashboard/default',
 );
 const providerVerificationUrl = localizeLoopbackUrl(
     (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_PROVIDER_VERIFICATION_URL)

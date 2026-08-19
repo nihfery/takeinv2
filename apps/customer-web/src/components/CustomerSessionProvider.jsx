@@ -70,8 +70,10 @@ export function CustomerSessionProvider({ children }) {
         // This provider lives in the root layout, so this work happens only once
         // for client-side navigation instead of on every page's navbar mount.
         const localSession = getSessionUser();
-        if (localSession.loggedIn) {
+        if (localSession.loggedIn && localSession.user?.role === 'customer') {
             applySession(localSession);
+        } else if (localSession.loggedIn) {
+            setSessionUser({ loggedIn: false, user: null });
         }
 
         function handleSessionChange(event) {

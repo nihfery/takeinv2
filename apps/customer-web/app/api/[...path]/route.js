@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 
-const ACCESS_COOKIE = 'takein_access_token';
-const REFRESH_COOKIE = 'takein_refresh_token';
+const ACCESS_COOKIE = 'takein_customer_access_token';
+const REFRESH_COOKIE = 'takein_customer_refresh_token';
+const LEGACY_ACCESS_COOKIE = 'takein_access_token';
+const LEGACY_REFRESH_COOKIE = 'takein_refresh_token';
+const PORTAL_ROLE = 'customer';
 const DEFAULT_ACCESS_MAX_AGE = 15 * 60;
 const DEFAULT_REFRESH_MAX_AGE = 30 * 24 * 60 * 60;
 
@@ -63,12 +66,12 @@ async function refreshSession(refreshToken) {
             accept: 'application/json',
             'content-type': 'application/json',
         },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        body: JSON.stringify({ refresh_token: refreshToken, role: PORTAL_ROLE }),
         cache: 'no-store',
     });
     if (!response.ok) return null;
     const payload = await response.json().catch(() => null);
-    if (!payload?.access_token || !payload?.refresh_token) return null;
+    if (!payload?.access_token || !payload?.refresh_token || payload?.user?.role !== PORTAL_ROLE) return null;
     return payload;
 }
 
@@ -113,7 +116,19 @@ async function responseFromBackend(backendResponse, authResponsePayload, session
         response.cookies.set(ACCESS_COOKIE, '', cookieOptions(0));
         response.cookies.set(REFRESH_COOKIE, '', cookieOptions(0));
     }
+    response.cookies.set(LEGACY_ACCESS_COOKIE, '', cookieOptions(0));
+    response.cookies.set(LEGACY_REFRESH_COOKIE, '', cookieOptions(0));
     return response;
+}
+
+function portalAuthBody(route, body) {
+    if (route !== 'auth/login' || !body?.byteLength) return body;
+    try {
+        const payload = JSON.parse(new TextDecoder().decode(body));
+        return JSON.stringify({ ...payload, role: PORTAL_ROLE });
+    } catch {
+        return body;
+    }
 }
 
 async function proxy(request, context) {
@@ -122,7 +137,11 @@ async function proxy(request, context) {
     let accessToken = cookieHeader.get(ACCESS_COOKIE)?.value || '';
     let refreshToken = cookieHeader.get(REFRESH_COOKIE)?.value || '';
     const route = path.join('/');
-    const isAuthExchange = ['auth/login', 'auth/register/customer', 'auth/register/provider'].includes(route);
+    const backendPath = route === 'auth/me' ? ['auth', PORTAL_ROLE, 'me'] : path;
+    if (route === 'auth/register/provider') {
+        return NextResponse.json({ message: 'Provider registration is not available through the customer portal.' }, { status: 403 });
+    }
+    const isAuthExchange = ['auth/login', 'auth/register/customer'].includes(route);
     const isLogout = route === 'auth/logout';
 
     let overrideBody;
@@ -130,8 +149,9 @@ async function proxy(request, context) {
         overrideBody = JSON.stringify({ refresh_token: refreshToken });
     }
 
-    const body = await requestBody(request, overrideBody);
-    let backendResponse = await callBackend(request, path, accessToken, body);
+    const originalBody = await requestBody(request, overrideBody);
+    const body = portalAuthBody(route, originalBody);
+    let backendResponse = await callBackend(request, backendPath, accessToken, body);
     let refreshed = null;
 
     if (backendResponse.status === 401 && refreshToken && !isAuthExchange && !isLogout) {
@@ -139,7 +159,7 @@ async function proxy(request, context) {
         if (refreshed) {
             accessToken = refreshed.access_token;
             refreshToken = refreshed.refresh_token;
-            backendResponse = await callBackend(request, path, accessToken, body);
+            backendResponse = await callBackend(request, backendPath, accessToken, body);
         }
     }
 
@@ -147,7 +167,16 @@ async function proxy(request, context) {
     let sessionPayload = refreshed;
     if (isAuthExchange && backendResponse.ok) {
         authResponsePayload = await backendResponse.clone().json().catch(() => null);
-        sessionPayload = authResponsePayload;
+        if (authResponsePayload?.user?.role === PORTAL_ROLE) {
+            sessionPayload = authResponsePayload;
+        } else {
+            backendResponse = Response.json(
+                { message: 'This account cannot sign in to the customer portal.' },
+                { status: 403 },
+            );
+            authResponsePayload = null;
+            sessionPayload = null;
+        }
     }
 
     const response = await responseFromBackend(backendResponse, authResponsePayload, sessionPayload, isLogout || (backendResponse.status === 401 && !refreshed));

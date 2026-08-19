@@ -19,6 +19,7 @@ rules:
   - {service: customer-service, path_regex: '^/api/customer/bookings/code/[^/]+/review$'}
   - {service: customer-service, path_regex: '^/api/admin/customers(?:/|$)'}
   - {service: customer-service, path_regex: '^/api/provider/(?:customers|reviews)(?:/|$)'}
+  - {service: provider-service, path_regex: '^/api/provider/branch-profile$'}
   - {service: provider-service, path_regex: '^/api/provider/profile$'}
   - {service: provider-service, path_regex: '^/api/provider/profile/documents(?:/|$)'}
   - {service: provider-service, path_regex: '^/api/provider/(?:staff|branches|roles-permissions)(?:/|$)'}

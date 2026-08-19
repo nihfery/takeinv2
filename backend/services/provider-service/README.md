@@ -17,7 +17,7 @@ Apply `db/migrations` with Goose and regenerate `internal/persistence/postgres/s
 
 ## Interfaces and events
 
-- REST: provider profile/documents, branch/staff/skill/schedule routes, branch-account role/permission lifecycle, and admin provider lifecycle routes.
+- REST: provider profile/documents, scoped branch profile, branch/staff/skill/schedule routes, branch-account role/permission lifecycle, and admin provider lifecycle routes.
 - gRPC: `GetProviderReadiness`, `ValidateBranchScope`, and `ResolveEligibleStaff`.
 - Publishes provider/readiness/role changes to `takein.provider.events.v1`; consumes identity lifecycle events with inbox deduplication and DLQ.
 

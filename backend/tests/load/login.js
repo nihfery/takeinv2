@@ -15,6 +15,7 @@ export default function () {
   const response = http.post(`${baseURL}/api/auth/login`, JSON.stringify({
     email: __ENV.LOGIN_EMAIL || "customer@example.test",
     password: __ENV.LOGIN_PASSWORD || "password123",
+    role: "customer",
   }), { headers: { "Content-Type": "application/json" }, tags: { operation: "auth_login" } });
   const ok = check(response, { "login succeeds": (value) => value.status === 200 });
   errors.add(!ok);

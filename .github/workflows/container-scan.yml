@@ -8,6 +8,7 @@ on:
       - "apps/customer-web/**"
       - "apps/provider-landing/**"
       - "apps/provider-console/**"
+      - "apps/provider-web/**"
       - "apps/admin-web/**"
       - "platform/docker/**"
       - "docker-compose.yml"
@@ -59,6 +60,11 @@ jobs:
               NEXT_PUBLIC_PROVIDER_CONSOLE_URL=https://provider.example.invalid
               NEXT_PUBLIC_PROVIDER_LOGIN_URL=/provider/login
               NEXT_PUBLIC_PROVIDER_LANDING_URL=https://partners.example.invalid
+          - image: provider-web
+            dockerfile: platform/docker/Dockerfile.provider-web
+            build_args: |-
+              NEXT_PUBLIC_PROVIDER_CONSOLE_URL=https://provider.example.invalid
+              NEXT_PUBLIC_PROVIDER_LOGIN_URL=/auth/v1/login
           - image: admin-web
             dockerfile: platform/docker/Dockerfile.next
             build_args: |-

@@ -16,8 +16,8 @@ services:
         NEXT_PUBLIC_API_BASE_URL: "${TAKEIN_PUBLIC_API_URL:-http://127.0.0.1:8088}/api"
         NEXT_PUBLIC_PROVIDER_FRONTEND_URL: "${PROVIDER_FRONTEND_URL:-http://127.0.0.1:5173}"
         NEXT_PUBLIC_PROVIDER_LOGIN_PATH: /register?mode=login
-        NEXT_PUBLIC_PROVIDER_LOGIN_URL: "${PROVIDER_CONSOLE_URL:-http://127.0.0.1:5175}/provider/login"
-        NEXT_PUBLIC_PROVIDER_DASHBOARD_URL: "${PROVIDER_CONSOLE_URL:-http://127.0.0.1:5175}/provider/dashboard"
+        NEXT_PUBLIC_PROVIDER_LOGIN_URL: "${PROVIDER_CONSOLE_URL:-http://127.0.0.1:5175}/auth/v1/login"
+        NEXT_PUBLIC_PROVIDER_DASHBOARD_URL: "${PROVIDER_CONSOLE_URL:-http://127.0.0.1:5175}/dashboard/default"
         NEXT_PUBLIC_PROVIDER_VERIFICATION_URL: "${PROVIDER_CONSOLE_URL:-http://127.0.0.1:5175}/provider/verification"
     restart: unless-stopped
     init: true
@@ -67,14 +67,10 @@ services:
   provider-console:
     build:
       context: .
-      dockerfile: platform/docker/Dockerfile.next
+      dockerfile: platform/docker/Dockerfile.provider-web
       args:
-        APP_PATH: apps/provider-console
-        GO_API_BASE_URL: http://takein-edge:8080
-        GO_IDENTITY_URL: http://takein-identity-api:8080
+        NEXT_PUBLIC_PROVIDER_LOGIN_URL: "${PROVIDER_CONSOLE_URL:-http://127.0.0.1:5175}/auth/v1/login"
         NEXT_PUBLIC_PROVIDER_CONSOLE_URL: "${PROVIDER_CONSOLE_URL:-http://127.0.0.1:5175}"
-        NEXT_PUBLIC_PROVIDER_LOGIN_URL: /provider/login
-        NEXT_PUBLIC_PROVIDER_LANDING_URL: "${PROVIDER_FRONTEND_URL:-http://127.0.0.1:5173}"
     restart: unless-stopped
     init: true
     expose: ["5175"]
@@ -85,7 +81,7 @@ services:
       TAKEIN_COOKIE_SECURE: ${TAKEIN_COOKIE_SECURE:-false}
     networks: [takein_backend]
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5175/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5175/auth/v1/login',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
       interval: 15s
       timeout: 5s
       retries: 10

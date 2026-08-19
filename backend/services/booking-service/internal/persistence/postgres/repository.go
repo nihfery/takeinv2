@@ -195,7 +195,7 @@ func (r *Repository) ListProvider(ctx context.Context, filter booking.ProviderLi
 		  AND (NULLIF($5,'')::date IS NULL OR booking_date<=NULLIF($5,'')::date)
 		  AND (NULLIF($6,'') IS NULL OR booking_type=$6)
 		  AND (NULLIF($7,'') IS NULL OR status=$7)
-		  AND ($8<>'queue' OR (booking_type IN ('queue','walk_in') AND status IN ('waiting','checked_in','in_progress','inprogress')))
+		  AND ($8<>'queue' OR booking_type IN ('scheduled','queue','walk_in','manual','group'))
 		ORDER BY booking_date DESC,COALESCE(queue_number,2147483647),COALESCE(starts_at,created_at),id DESC LIMIT 500`,
 		filter.ProviderID, filter.BranchID, filter.BookingDate, filter.DateFrom, filter.DateTo, filter.BookingType, filter.Status, filter.Mode)
 }
@@ -424,6 +424,16 @@ func (r *Repository) ProviderTransition(ctx context.Context, id, providerID int6
 		return booking.Booking{}, err
 	}
 	return value, nil
+}
+
+func (r *Repository) ProviderUpdateDetails(ctx context.Context, id, providerID int64, branchScope *int64, customerName, customerPhone, notes string) (booking.Booking, error) {
+	return r.mutate(ctx, "booking.details_updated", `UPDATE bookings SET
+		customer_name=NULLIF($4,''),
+		customer_phone=NULLIF($5,''),
+		notes=NULLIF($6,''),
+		updated_at=now()
+		WHERE id=$1 AND provider_id=$2 AND ($3::bigint IS NULL OR branch_id=$3)
+		RETURNING `+columns, id, providerID, branchScope, customerName, customerPhone, notes)
 }
 
 func (r *Repository) EligibleReviewStaff(ctx context.Context, bookingID int64) ([]int64, error) {

@@ -29,6 +29,9 @@ func (h *Handler) RegisterRoutes(engine *gin.Engine) {
 	api.POST("/auth/register/provider", h.registerProvider)
 	api.POST("/auth/login", h.login)
 	api.GET("/auth/me", h.validator.Middleware(), h.me)
+	api.GET("/auth/customer/me", h.validator.Middleware("customer"), h.me)
+	api.GET("/auth/provider/me", h.validator.Middleware("provider"), h.me)
+	api.GET("/auth/admin/me", h.validator.Middleware("admin"), h.me)
 	api.POST("/auth/logout", h.validator.Middleware(), h.logout)
 	api.PUT("/provider/profile/password", h.validator.Middleware("provider"), h.changePassword)
 	engine.POST("/internal/v1/auth/refresh", h.refresh)
@@ -64,7 +67,7 @@ func (h *Handler) registerCustomer(c *gin.Context) {
 		handleError(c, err)
 		return
 	}
-	_, pair, err := h.service.Login(c.Request.Context(), request.Email, request.Password, sessionMetadata(c))
+	_, pair, err := h.service.Login(c.Request.Context(), request.Email, request.Password, "customer", sessionMetadata(c))
 	if err != nil {
 		handleError(c, err)
 		return
@@ -101,7 +104,7 @@ func (h *Handler) registerProvider(c *gin.Context) {
 		handleError(c, err)
 		return
 	}
-	_, pair, err := h.service.Login(c.Request.Context(), request.Email, request.Password, sessionMetadata(c))
+	_, pair, err := h.service.Login(c.Request.Context(), request.Email, request.Password, "provider", sessionMetadata(c))
 	if err != nil {
 		handleError(c, err)
 		return
@@ -117,16 +120,13 @@ func (h *Handler) login(c *gin.Context) {
 	var request struct {
 		Email    string `json:"email" binding:"required,email"`
 		Password string `json:"password" binding:"required"`
-		Role     string `json:"role" binding:"omitempty,oneof=admin provider customer"`
+		Role     string `json:"role" binding:"required,oneof=admin provider customer"`
 	}
 	if !bind(c, &request) {
 		return
 	}
-	user, pair, err := h.service.Login(c.Request.Context(), request.Email, request.Password, sessionMetadata(c))
-	if err != nil || request.Role != "" && user.Role != request.Role {
-		if err == nil {
-			err = identity.ErrInvalidCredentials
-		}
+	user, pair, err := h.service.Login(c.Request.Context(), request.Email, request.Password, request.Role, sessionMetadata(c))
+	if err != nil {
 		handleError(c, err)
 		return
 	}
@@ -142,11 +142,12 @@ func (h *Handler) login(c *gin.Context) {
 func (h *Handler) refresh(c *gin.Context) {
 	var request struct {
 		RefreshToken string `json:"refresh_token" binding:"required"`
+		Role         string `json:"role" binding:"required,oneof=admin provider customer"`
 	}
 	if !bind(c, &request) {
 		return
 	}
-	user, pair, err := h.service.Refresh(c.Request.Context(), request.RefreshToken, sessionMetadata(c))
+	user, pair, err := h.service.Refresh(c.Request.Context(), request.RefreshToken, request.Role, sessionMetadata(c))
 	if err != nil {
 		handleError(c, err)
 		return

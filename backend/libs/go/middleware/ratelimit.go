@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"reflect"
 	"strconv"
 	"sync"
 	"time"
@@ -49,11 +50,27 @@ return {count, ttl}
 `)
 
 func RateLimit(client redis.Cmdable, service string, policies map[string]RatePolicy, logger *slog.Logger) gin.HandlerFunc {
+	if isNilRedisClient(client) {
+		client = nil
+	}
 	limiter := &rateLimiter{redis: client, service: service, policies: policies, logger: logger, memory: map[string]memoryCounter{}}
 	if limiter.logger == nil {
 		limiter.logger = slog.Default()
 	}
 	return limiter.handle
+}
+
+func isNilRedisClient(client redis.Cmdable) bool {
+	if client == nil {
+		return true
+	}
+	value := reflect.ValueOf(client)
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return value.IsNil()
+	default:
+		return false
+	}
 }
 
 func (l *rateLimiter) handle(c *gin.Context) {

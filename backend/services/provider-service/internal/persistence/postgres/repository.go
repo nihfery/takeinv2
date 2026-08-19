@@ -24,7 +24,7 @@ type Repository struct{ pool *pgxpool.Pool }
 func New(pool *pgxpool.Pool) *Repository { return &Repository{pool: pool} }
 
 const profileColumns = `id,user_id,display_name,NULLIF(image,''),phone_number,category,status,onboarding_status,document_status,document_note,ktp_object_id::text,nib_number,nib_object_id::text,business_object_id::text,trial_starts_at,trial_ends_at,created_at,updated_at`
-const branchColumns = `id,provider_id,branch_name,email,COALESCE(phone_code,''),phone_number,address,country_id,state_id,city_id,latitude::float8,longitude::float8,zip_code,COALESCE(to_char(working_start_hour,'HH24:MI'),''),COALESCE(to_char(working_end_hour,'HH24:MI'),''),COALESCE(working_days,'[]'::jsonb),COALESCE(holidays,'[]'::jsonb),image_object_id::text,COALESCE(image_object_ids,'[]'::jsonb),status,created_at,updated_at`
+const branchColumns = `id,provider_id,branch_name,email,COALESCE(phone_code,''),phone_number,address,country_id,state_id,city_id,latitude::float8,longitude::float8,zip_code,COALESCE(to_char(working_start_hour,'HH24:MI'),''),COALESCE(to_char(working_end_hour,'HH24:MI'),''),COALESCE(working_days,'[]'::jsonb),COALESCE(holidays,'[]'::jsonb),image_object_id::text,COALESCE(image_object_ids,'[]'::jsonb),status,created_at,updated_at,COALESCE(description,''),branch_type,timezone,opened_at::text`
 const staffColumns = `id,provider_id,branch_id,image_object_id::text,first_name,last_name,email,username,country_code,phone_number,gender,date_of_birth::text,address,country_id,state_id,city_id,postal_code,bio,category_id,role,current_status,status,created_at,updated_at`
 const roleColumns = `id,provider_id,branch_id,identity_user_id,role_name,slug,description,status,COALESCE(account_name,''),COALESCE(account_email,''),created_at,updated_at`
 
@@ -89,6 +89,12 @@ func (r *Repository) Branch(ctx context.Context, id int64) (provider.Branch, err
 	return scanBranch(r.pool.QueryRow(ctx, `SELECT `+branchColumns+` FROM provider_branches WHERE id=$1`, id))
 }
 
+func (r *Repository) BranchRoleName(ctx context.Context, providerID, userID int64) (string, error) {
+	var roleName string
+	err := r.pool.QueryRow(ctx, `SELECT role_name FROM provider_roles WHERE provider_id=$1 AND identity_user_id=$2 AND status='active' ORDER BY id LIMIT 1`, providerID, userID).Scan(&roleName)
+	return roleName, translate(err)
+}
+
 func (r *Repository) CreateBranch(ctx context.Context, providerID int64, input provider.BranchInput) (provider.Branch, error) {
 	return r.mutateBranch(ctx, providerID, 0, input, true, 0)
 }
@@ -125,13 +131,13 @@ func (r *Repository) mutateBranch(ctx context.Context, providerID, id int64, inp
 	var row pgx.Row
 	eventType := "provider.branch_updated"
 	if create {
-		row = tx.QueryRow(ctx, `INSERT INTO provider_branches(provider_id,branch_name,email,phone_code,phone_number,address,country_id,state_id,city_id,latitude,longitude,zip_code,working_start_hour,working_end_hour,working_days,holidays,image_object_id,image_object_ids,status)
-			VALUES($1,$2,NULLIF($3,''),COALESCE(NULLIF($4,''),'+1'),NULLIF($5,''),NULLIF($6,''),NULLIF($7,''),NULLIF($8,''),NULLIF($9,''),$10,$11,NULLIF($12,''),NULLIF($13,'')::time,NULLIF($14,'')::time,COALESCE($15::jsonb,'[]'::jsonb),COALESCE($16::jsonb,'[]'::jsonb),NULLIF($17,'')::uuid,COALESCE($18::jsonb,'[]'::jsonb),COALESCE(NULLIF($19,''),'active')) RETURNING `+branchColumns,
-			providerID, input.Name, input.Email, input.PhoneCode, input.PhoneNumber, input.Address, input.CountryID, input.StateID, input.CityID, input.Latitude, input.Longitude, input.ZipCode, input.WorkingStartHour, input.WorkingEndHour, jsonValue(input.WorkingDays), jsonValue(input.Holidays), stringValue(input.ImageObjectID), jsonValue(input.ImageObjectIDs), input.Status)
+		row = tx.QueryRow(ctx, `INSERT INTO provider_branches(provider_id,branch_name,email,phone_code,phone_number,address,country_id,state_id,city_id,latitude,longitude,zip_code,working_start_hour,working_end_hour,working_days,holidays,image_object_id,image_object_ids,status,description,branch_type,timezone,opened_at)
+			VALUES($1,$2,NULLIF($3,''),COALESCE(NULLIF($4,''),'+1'),NULLIF($5,''),NULLIF($6,''),NULLIF($7,''),NULLIF($8,''),NULLIF($9,''),$10,$11,NULLIF($12,''),NULLIF($13,'')::time,NULLIF($14,'')::time,COALESCE($15::jsonb,'[]'::jsonb),COALESCE($16::jsonb,'[]'::jsonb),NULLIF($17,'')::uuid,COALESCE($18::jsonb,'[]'::jsonb),COALESCE(NULLIF($19,''),'active'),COALESCE(NULLIF($20,''),''),COALESCE(NULLIF($21,''),'physical'),COALESCE(NULLIF($22,''),'Asia/Jakarta'),COALESCE(NULLIF($23,'')::date,now()::date)) RETURNING `+branchColumns,
+			providerID, input.Name, input.Email, input.PhoneCode, input.PhoneNumber, input.Address, input.CountryID, input.StateID, input.CityID, input.Latitude, input.Longitude, input.ZipCode, input.WorkingStartHour, input.WorkingEndHour, jsonValue(input.WorkingDays), jsonValue(input.Holidays), stringValue(input.ImageObjectID), jsonValue(input.ImageObjectIDs), input.Status, input.Description, input.BranchType, input.Timezone, input.OpenedAt)
 		eventType = "provider.branch_created"
 	} else {
-		row = tx.QueryRow(ctx, `UPDATE provider_branches SET branch_name=COALESCE(NULLIF($3,''),branch_name),email=COALESCE(NULLIF($4,''),email),phone_code=COALESCE(NULLIF($5,''),phone_code),phone_number=COALESCE(NULLIF($6,''),phone_number),address=COALESCE(NULLIF($7,''),address),country_id=COALESCE(NULLIF($8,''),country_id),state_id=COALESCE(NULLIF($9,''),state_id),city_id=COALESCE(NULLIF($10,''),city_id),latitude=COALESCE($11,latitude),longitude=COALESCE($12,longitude),zip_code=COALESCE(NULLIF($13,''),zip_code),working_start_hour=COALESCE(NULLIF($14,'')::time,working_start_hour),working_end_hour=COALESCE(NULLIF($15,'')::time,working_end_hour),working_days=COALESCE($16::jsonb,working_days),holidays=COALESCE($17::jsonb,holidays),image_object_id=COALESCE(NULLIF($18,'')::uuid,image_object_id),image_object_ids=COALESCE($19::jsonb,image_object_ids),status=COALESCE(NULLIF($20,''),status),updated_at=now() WHERE id=$1 AND provider_id=$2 RETURNING `+branchColumns,
-			id, providerID, input.Name, input.Email, input.PhoneCode, input.PhoneNumber, input.Address, input.CountryID, input.StateID, input.CityID, input.Latitude, input.Longitude, input.ZipCode, input.WorkingStartHour, input.WorkingEndHour, jsonValueOrNil(input.WorkingDays), jsonValueOrNil(input.Holidays), stringValue(input.ImageObjectID), jsonValueOrNil(input.ImageObjectIDs), input.Status)
+		row = tx.QueryRow(ctx, `UPDATE provider_branches SET branch_name=COALESCE(NULLIF($3,''),branch_name),email=COALESCE(NULLIF($4,''),email),phone_code=COALESCE(NULLIF($5,''),phone_code),phone_number=COALESCE(NULLIF($6,''),phone_number),address=COALESCE(NULLIF($7,''),address),country_id=COALESCE(NULLIF($8,''),country_id),state_id=COALESCE(NULLIF($9,''),state_id),city_id=COALESCE(NULLIF($10,''),city_id),latitude=COALESCE($11,latitude),longitude=COALESCE($12,longitude),zip_code=COALESCE(NULLIF($13,''),zip_code),working_start_hour=COALESCE(NULLIF($14,'')::time,working_start_hour),working_end_hour=COALESCE(NULLIF($15,'')::time,working_end_hour),working_days=COALESCE($16::jsonb,working_days),holidays=COALESCE($17::jsonb,holidays),image_object_id=COALESCE(NULLIF($18,'')::uuid,image_object_id),image_object_ids=COALESCE($19::jsonb,image_object_ids),status=COALESCE(NULLIF($20,''),status),description=COALESCE(NULLIF($21,''),description),branch_type=COALESCE(NULLIF($22,''),branch_type),timezone=COALESCE(NULLIF($23,''),timezone),opened_at=COALESCE(NULLIF($24,'')::date,opened_at),updated_at=now() WHERE id=$1 AND provider_id=$2 RETURNING `+branchColumns,
+			id, providerID, input.Name, input.Email, input.PhoneCode, input.PhoneNumber, input.Address, input.CountryID, input.StateID, input.CityID, input.Latitude, input.Longitude, input.ZipCode, input.WorkingStartHour, input.WorkingEndHour, jsonValueOrNil(input.WorkingDays), jsonValueOrNil(input.Holidays), stringValue(input.ImageObjectID), jsonValueOrNil(input.ImageObjectIDs), input.Status, input.Description, input.BranchType, input.Timezone, input.OpenedAt)
 	}
 	branch, err := scanBranch(row)
 	if err != nil {
@@ -174,8 +180,8 @@ func (r *Repository) AssignBranchStaff(ctx context.Context, providerID, branchID
 	return tx.Commit(ctx)
 }
 
-func (r *Repository) ListStaff(ctx context.Context, providerID int64) ([]provider.Staff, error) {
-	rows, err := r.pool.Query(ctx, `SELECT `+staffColumns+` FROM provider_staffs WHERE provider_id=$1 ORDER BY id LIMIT 500`, providerID)
+func (r *Repository) ListStaff(ctx context.Context, providerID int64, branchID *int64) ([]provider.Staff, error) {
+	rows, err := r.pool.Query(ctx, `SELECT `+staffColumns+` FROM provider_staffs WHERE provider_id=$1 AND ($2::bigint IS NULL OR branch_id=$2) ORDER BY id LIMIT 500`, providerID, branchID)
 	if err != nil {
 		return nil, err
 	}
@@ -622,7 +628,7 @@ func scanProfile(row rowScanner) (provider.Profile, error) {
 func scanBranch(row rowScanner) (provider.Branch, error) {
 	var value provider.Branch
 	var workingDays, holidays, imageObjectIDs []byte
-	err := row.Scan(&value.ID, &value.ProviderID, &value.Name, &value.Email, &value.PhoneCode, &value.PhoneNumber, &value.Address, &value.CountryID, &value.StateID, &value.CityID, &value.Latitude, &value.Longitude, &value.ZipCode, &value.WorkingStartHour, &value.WorkingEndHour, &workingDays, &holidays, &value.ImageObjectID, &imageObjectIDs, &value.Status, &value.CreatedAt, &value.UpdatedAt)
+	err := row.Scan(&value.ID, &value.ProviderID, &value.Name, &value.Email, &value.PhoneCode, &value.PhoneNumber, &value.Address, &value.CountryID, &value.StateID, &value.CityID, &value.Latitude, &value.Longitude, &value.ZipCode, &value.WorkingStartHour, &value.WorkingEndHour, &workingDays, &holidays, &value.ImageObjectID, &imageObjectIDs, &value.Status, &value.CreatedAt, &value.UpdatedAt, &value.Description, &value.BranchType, &value.Timezone, &value.OpenedAt)
 	if err == nil {
 		_ = json.Unmarshal(workingDays, &value.WorkingDays)
 		_ = json.Unmarshal(holidays, &value.Holidays)

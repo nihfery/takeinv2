@@ -25,7 +25,7 @@ func (c *Client) ValidateBranches(ctx context.Context, providerID int64, branchI
 	actor, _ := authcontext.ActorFrom(ctx)
 	metadata := &commonv1.RequestMetadata{RequestId: requestID, CorrelationId: correlationID, ActorId: actor.UserID, ActorRole: actor.Role, ProviderId: actor.ProviderID, BranchId: actor.BranchID, Permissions: actor.Permissions}
 	for _, branchID := range branchIDs {
-		response, err := c.client.ValidateBranchScope(ctx, &providerv1.ValidateBranchScopeRequest{ActorId: actor.UserID, ProviderId: strconv.FormatInt(providerID, 10), BranchId: strconv.FormatInt(branchID, 10), Permission: "services.manage", Metadata: metadata})
+		response, err := c.client.ValidateBranchScope(ctx, &providerv1.ValidateBranchScopeRequest{ActorId: actor.UserID, ProviderId: strconv.FormatInt(providerID, 10), BranchId: strconv.FormatInt(branchID, 10), Permission: "services", Metadata: metadata})
 		if err != nil {
 			return err
 		}

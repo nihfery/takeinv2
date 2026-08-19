@@ -62,12 +62,16 @@ func (r *Repository) DeleteCategory(ctx context.Context, id int64) error {
 	return r.delete(ctx, "category", id, "catalog.category_deleted", `DELETE FROM service_categories WHERE id=$1`, id)
 }
 
-func (r *Repository) ListServices(ctx context.Context, providerID *int64, public bool) ([]map[string]any, error) {
+func (r *Repository) ListServices(ctx context.Context, providerID, branchID *int64, public bool) ([]map[string]any, error) {
 	query := `SELECT ` + serviceColumns + ` FROM services WHERE 1=1`
 	args := []any{}
 	if providerID != nil {
 		args = append(args, *providerID)
 		query += fmt.Sprintf(` AND provider_id=$%d`, len(args))
+	}
+	if branchID != nil {
+		args = append(args, *branchID)
+		query += fmt.Sprintf(` AND branch_ids @> jsonb_build_array($%d::bigint)`, len(args))
 	}
 	if public {
 		query += ` AND status='active' AND verify_status='verified'`
@@ -93,12 +97,16 @@ func (r *Repository) ListBranchServices(ctx context.Context, branchID int64) ([]
 		  AND (COALESCE(jsonb_array_length(s.branch_ids),0)=0 OR s.branch_ids @> jsonb_build_array($1::bigint))
 		ORDER BY s.id LIMIT 500`, branchID)
 }
-func (r *Repository) Service(ctx context.Context, id int64, providerID *int64, public bool) (map[string]any, error) {
+func (r *Repository) Service(ctx context.Context, id int64, providerID, branchID *int64, public bool) (map[string]any, error) {
 	query := `SELECT ` + serviceColumns + ` FROM services WHERE id=$1`
 	args := []any{id}
 	if providerID != nil {
 		args = append(args, *providerID)
-		query += ` AND provider_id=$2`
+		query += fmt.Sprintf(` AND provider_id=$%d`, len(args))
+	}
+	if branchID != nil {
+		args = append(args, *branchID)
+		query += fmt.Sprintf(` AND branch_ids @> jsonb_build_array($%d::bigint)`, len(args))
 	}
 	if public {
 		query += ` AND status='active' AND verify_status='verified'`
@@ -121,7 +129,7 @@ func (r *Repository) CreateService(ctx context.Context, providerID int64, input 
 		jsonRaw(input.Holidays), jsonValue(input.BranchIDs), jsonValue(input.GalleryObjectIDs), input.VideoURL,
 		input.Status, input.VerifyStatus)
 }
-func (r *Repository) UpdateService(ctx context.Context, providerID, id int64, input catalog.ServiceInput) (map[string]any, error) {
+func (r *Repository) UpdateService(ctx context.Context, providerID, id int64, branchID *int64, input catalog.ServiceInput) (map[string]any, error) {
 	return r.mutate(ctx, "service", id, "catalog.service_updated", `UPDATE services SET
 		title=$3,slug=$4,category_text=$5,category_id=$6,code=NULLIF($7,''),description=NULLIF($8,''),includes=NULLIF($9,''),
 		price_type=NULLIF($10,''),price=$11::numeric/100,minimum_duration=$12,estimated_duration=$13,maximum_duration=$14,
@@ -129,34 +137,47 @@ func (r *Repository) UpdateService(ctx context.Context, providerID, id int64, in
 		dp_amount=$18::numeric/100,payment_policy=NULLIF($19,''),slots=$20,additional_services=$21,holidays=$22,
 		branch_ids=$23,gallery_object_ids=$24,video_url=NULLIF($25,''),status=COALESCE(NULLIF($26,''),'active'),
 		verify_status=COALESCE(NULLIF($27,''),verify_status),updated_at=now()
-		WHERE id=$1 AND provider_id=$2 RETURNING `+serviceColumns,
+		WHERE id=$1 AND provider_id=$2
+		  AND ($28::bigint IS NULL OR (branch_ids @> jsonb_build_array($28::bigint) AND jsonb_array_length(branch_ids)=1))
+		RETURNING `+serviceColumns,
 		id, providerID, input.Title, input.Slug, input.Category, input.CategoryID, input.Code, input.Description,
 		input.Includes, input.PriceType, input.PriceMinor, input.MinimumDuration, input.Duration, input.MaximumDuration,
 		input.QueueEnabled, input.ScheduledEnabled, input.RequiresDP, input.DPAmountMinor, input.PaymentPolicy,
 		jsonRaw(input.Slots), jsonRaw(input.AdditionalServices), jsonRaw(input.Holidays), jsonValue(input.BranchIDs),
-		jsonValue(input.GalleryObjectIDs), input.VideoURL, input.Status, input.VerifyStatus)
+		jsonValue(input.GalleryObjectIDs), input.VideoURL, input.Status, input.VerifyStatus, branchID)
 }
-func (r *Repository) UpdateServiceJSON(ctx context.Context, providerID, id int64, field string, value any) (map[string]any, error) {
+func (r *Repository) UpdateServiceJSON(ctx context.Context, providerID, id int64, branchID *int64, field string, value any) (map[string]any, error) {
 	if field != "branch_ids" && field != "gallery_object_ids" {
 		return nil, catalog.ErrConflict
 	}
-	return r.mutate(ctx, "service", id, "catalog.service_updated", `UPDATE services SET `+field+`=$3,updated_at=now() WHERE id=$1 AND provider_id=$2 RETURNING `+serviceColumns, id, providerID, jsonValue(value))
+	return r.mutate(ctx, "service", id, "catalog.service_updated", `UPDATE services SET `+field+`=$3,updated_at=now()
+		WHERE id=$1 AND provider_id=$2
+		  AND ($4::bigint IS NULL OR (branch_ids @> jsonb_build_array($4::bigint) AND jsonb_array_length(branch_ids)=1))
+		RETURNING `+serviceColumns, id, providerID, jsonValue(value), branchID)
 }
-func (r *Repository) UpdateServiceGallery(ctx context.Context, providerID, id int64, objectIDs []string, videoURL string) (map[string]any, error) {
-	return r.mutate(ctx, "service", id, "catalog.service_updated", `UPDATE services SET gallery_object_ids=$3,video_url=NULLIF($4,''),updated_at=now() WHERE id=$1 AND provider_id=$2 RETURNING `+serviceColumns, id, providerID, jsonValue(objectIDs), videoURL)
+func (r *Repository) UpdateServiceGallery(ctx context.Context, providerID, id int64, branchID *int64, objectIDs []string, videoURL string) (map[string]any, error) {
+	return r.mutate(ctx, "service", id, "catalog.service_updated", `UPDATE services SET gallery_object_ids=$3,video_url=NULLIF($4,''),updated_at=now()
+		WHERE id=$1 AND provider_id=$2
+		  AND ($5::bigint IS NULL OR (branch_ids @> jsonb_build_array($5::bigint) AND jsonb_array_length(branch_ids)=1))
+		RETURNING `+serviceColumns, id, providerID, jsonValue(objectIDs), videoURL, branchID)
 }
-func (r *Repository) ToggleService(ctx context.Context, id int64, providerID *int64) (map[string]any, error) {
+func (r *Repository) ToggleService(ctx context.Context, id int64, providerID, branchID *int64) (map[string]any, error) {
 	query := `UPDATE services SET status=CASE status WHEN 'active' THEN 'inactive' ELSE 'active' END,updated_at=now() WHERE id=$1`
 	args := []any{id}
 	if providerID != nil {
-		query += ` AND provider_id=$2`
 		args = append(args, *providerID)
+		query += fmt.Sprintf(` AND provider_id=$%d`, len(args))
+	}
+	if branchID != nil {
+		args = append(args, *branchID)
+		query += fmt.Sprintf(` AND branch_ids @> jsonb_build_array($%d::bigint) AND jsonb_array_length(branch_ids)=1`, len(args))
 	}
 	query += ` RETURNING ` + serviceColumns
 	return r.mutate(ctx, "service", id, "catalog.service_status_changed", query, args...)
 }
-func (r *Repository) DeleteService(ctx context.Context, providerID, id int64) error {
-	return r.delete(ctx, "service", id, "catalog.service_deleted", `DELETE FROM services WHERE id=$1 AND provider_id=$2`, id, providerID)
+func (r *Repository) DeleteService(ctx context.Context, providerID, id int64, branchID *int64) error {
+	return r.delete(ctx, "service", id, "catalog.service_deleted", `DELETE FROM services WHERE id=$1 AND provider_id=$2
+		AND ($3::bigint IS NULL OR (branch_ids @> jsonb_build_array($3::bigint) AND jsonb_array_length(branch_ids)=1))`, id, providerID, branchID)
 }
 
 func (r *Repository) ListCoupons(ctx context.Context, public bool) ([]map[string]any, error) {

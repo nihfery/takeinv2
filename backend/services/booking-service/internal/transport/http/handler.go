@@ -49,6 +49,8 @@ func (h *Handler) RegisterRoutes(engine *gin.Engine) {
 	provider.GET("", h.providerList)
 	provider.GET("/calendar", h.providerCalendar)
 	provider.GET("/queue", h.providerQueue)
+	provider.GET("/:booking", h.providerShow)
+	provider.PATCH("/:booking", h.providerUpdate)
 	provider.POST("/walk-in/availability", h.providerAvailability)
 	provider.POST("/walk-in", h.providerCreateWalkIn)
 	provider.POST("/:booking/call", h.providerAction("call", "queue"))
@@ -360,6 +362,42 @@ func (h *Handler) providerCalendar(c *gin.Context) {
 
 func (h *Handler) providerQueue(c *gin.Context) {
 	h.providerListMode(c, "queue", "queue")
+}
+
+func (h *Handler) providerShow(c *gin.Context) {
+	providerID, branchScope, requestActor, ok := providerScope(c)
+	if !ok || !providerPermission(requestActor, "bookings") {
+		if ok {
+			respond(c, nil, booking.ErrForbidden)
+		}
+		return
+	}
+	id, valid := idParam(c, "booking")
+	if !valid {
+		return
+	}
+	value, err := h.service.ProviderBooking(c.Request.Context(), providerID, branchScope, id)
+	respond(c, value, err)
+}
+
+func (h *Handler) providerUpdate(c *gin.Context) {
+	providerID, branchScope, requestActor, ok := providerScope(c)
+	if !ok || !providerPermission(requestActor, "bookings") {
+		if ok {
+			respond(c, nil, booking.ErrForbidden)
+		}
+		return
+	}
+	id, valid := idParam(c, "booking")
+	if !valid {
+		return
+	}
+	var request booking.ProviderUpdateRequest
+	if !bind(c, &request) {
+		return
+	}
+	value, err := h.service.UpdateProviderBooking(c.Request.Context(), providerID, branchScope, id, request)
+	respond(c, value, err)
 }
 
 func (h *Handler) providerListMode(c *gin.Context, permission, mode string) {

@@ -8,32 +8,21 @@ import {
   ChevronDown,
   LoaderCircle,
   LogOut,
+  Mail,
   Menu,
-  MessageCircle,
+  Moon,
+  PanelLeft,
   RefreshCw,
   Search,
   Settings2,
-  ShieldCheck,
   Store,
+  Sun,
   UserRound,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,7 +35,8 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { accountScope, itemForSection } from '../config/navigation';
+import { cn } from '@/lib/utils';
+import { accountScope } from '../config/navigation';
 import { navigateProvider } from './ProviderNavLink';
 import { SidebarContent } from './Sidebar';
 
@@ -59,7 +49,7 @@ function DashboardSearch({ open, onOpenChange, visibleItems, selected }) {
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return visibleItems;
-    return visibleItems.filter((entry) => `${entry.label} ${entry.description}`.toLowerCase().includes(needle));
+    return visibleItems.filter((item) => `${item.label} ${item.description}`.toLowerCase().includes(needle));
   }, [query, visibleItems]);
 
   function selectItem(key) {
@@ -68,75 +58,50 @@ function DashboardSearch({ open, onOpenChange, visibleItems, selected }) {
     onOpenChange(false);
   }
 
-  function changeOpen(nextOpen) {
-    if (!nextOpen) setQuery('');
-    onOpenChange(nextOpen);
-  }
-
   return (
-    <Dialog open={open} onOpenChange={changeOpen}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg" showCloseButton={false}>
+    <Dialog open={open} onOpenChange={(next) => { if (!next) setQuery(''); onOpenChange(next); }}>
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-xl" showCloseButton={false}>
         <DialogHeader className="border-b px-4 py-3">
-          <DialogTitle>Search provider workspace</DialogTitle>
-          <DialogDescription>Open any dashboard page available to your account.</DialogDescription>
+          <DialogTitle>Search provider console</DialogTitle>
+          <DialogDescription>Open a menu available for this provider account.</DialogDescription>
         </DialogHeader>
         <div className="relative border-b p-3">
-          <Search className="pointer-events-none absolute left-5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            autoFocus
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search bookings, customers, reports..."
-            className="h-10 pl-9"
-          />
+          <Search className="pointer-events-none absolute left-6 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search bookings, services, payments..." className="pl-9" />
         </div>
         <div className="max-h-80 overflow-y-auto p-2">
-          {results.length ? results.map((entry) => {
-            const Icon = entry.icon;
-            const current = entry.key === selected;
+          {results.length ? results.map((item) => {
+            const Icon = item.icon;
             return (
-              <Button
-                key={entry.key}
-                type="button"
-                variant="ghost"
-                className="h-auto w-full justify-start gap-3 px-3 py-2.5 text-left"
-                onClick={() => selectItem(entry.key)}
-              >
-                <span className="grid size-8 shrink-0 place-items-center rounded-lg border bg-background"><Icon className="size-4" /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{entry.label}</span>
-                  <span className="mt-0.5 block truncate text-xs font-normal text-muted-foreground">{entry.description}</span>
-                </span>
-                {current ? <Badge variant="secondary" className="text-[9px]">Current</Badge> : null}
+              <Button key={item.key} variant="ghost" className="h-auto w-full justify-start gap-3 px-2.5 py-2 text-left" onClick={() => selectItem(item.key)}>
+                <span className="grid size-8 shrink-0 place-items-center rounded-md border bg-background"><Icon className="size-4" /></span>
+                <span className="min-w-0 flex-1"><strong className="block truncate text-sm">{item.label}</strong><span className="block truncate text-xs font-normal text-muted-foreground">{item.description}</span></span>
+                {item.key === selected ? <Badge variant="secondary" className="text-[9px]">Current</Badge> : null}
               </Button>
             );
-          }) : (
-            <div className="px-4 py-10 text-center">
-              <p className="text-sm font-medium">No menu found</p>
-              <p className="mt-1 text-xs text-muted-foreground">Try another dashboard menu name.</p>
-            </div>
-          )}
+          }) : <div className="px-4 py-10 text-center text-sm text-muted-foreground">No accessible menu matches your search.</div>}
         </div>
-        <div className="flex items-center justify-between border-t bg-muted/35 px-4 py-2 text-[10px] text-muted-foreground">
-          <span>{results.length} accessible menus</span>
-          <span>ESC to close</span>
-        </div>
+        <div className="flex justify-between border-t bg-muted/35 px-4 py-2 text-[10px] text-muted-foreground"><span>{results.length} menu results</span><span>Esc to close</span></div>
       </DialogContent>
     </Dialog>
   );
 }
 
-export default function Topbar({ user, visibleItems, activeGroup, selected, signOut, loading, reload }) {
+export default function Topbar({ user, visibleItems, activeGroup, selected, signOut, loading, reload, sidebarCollapsed = false, onToggleSidebar }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const item = itemForSection(selected);
+  const [darkMode, setDarkMode] = useState(false);
   const scope = accountScope(user);
   const ScopeIcon = scope.type === 'central' ? Building2 : Store;
-  const profileVisible = visibleItems.some((entry) => entry.key === 'profile');
-  const chatVisible = visibleItems.some((entry) => entry.key === 'chat');
-  const notificationsVisible = visibleItems.some((entry) => entry.key === 'notifications');
+  const profileVisible = visibleItems.some((item) => item.key === 'profile');
+  const chatVisible = visibleItems.some((item) => item.key === 'chat');
+  const notificationsVisible = visibleItems.some((item) => item.key === 'notifications');
 
   useEffect(() => {
+    const savedTheme = window.localStorage.getItem('takein-provider-theme');
+    const shouldUseDark = savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.classList.toggle('dark', shouldUseDark);
+    setDarkMode(shouldUseDark);
     function openSearch(event) {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
@@ -147,109 +112,67 @@ export default function Topbar({ user, visibleItems, activeGroup, selected, sign
     return () => window.removeEventListener('keydown', openSearch);
   }, []);
 
+  function toggleTheme() {
+    const next = !darkMode;
+    document.documentElement.classList.toggle('dark', next);
+    window.localStorage.setItem('takein-provider-theme', next ? 'dark' : 'light');
+    setDarkMode(next);
+  }
+
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-40 border-b bg-background/95 shadow-[0_1px_2px_rgb(0_0_0/0.03)] backdrop-blur supports-[backdrop-filter]:bg-background/85 lg:left-72">
-        <div className="flex h-16 items-center gap-2 px-3 sm:px-4 lg:gap-3 lg:px-6">
+      <header className={cn(
+        'fixed inset-x-0 top-0 z-40 h-12 border-b bg-background/90 backdrop-blur-md transition-[left] duration-200 lg:left-68',
+        sidebarCollapsed && 'lg:left-16',
+      )}>
+        <div className="flex h-full items-center gap-2 px-3 lg:px-4">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger render={<Button variant="outline" size="icon" className="lg:hidden" aria-label="Open navigation" />}><Menu /></SheetTrigger>
-            <SheetContent side="left" className="w-[288px] max-w-[88vw] gap-0 p-0">
+            <SheetTrigger render={<Button variant="ghost" size="icon-sm" className="lg:hidden" aria-label="Open navigation" />}><Menu /></SheetTrigger>
+            <SheetContent side="left" className="w-[272px] max-w-[88vw] gap-0 p-0">
               <SheetTitle className="sr-only">Provider navigation</SheetTitle>
-              <SheetDescription className="sr-only">Navigate through the TAKEIN provider console.</SheetDescription>
+              <SheetDescription className="sr-only">Navigate the TAKEIN provider console.</SheetDescription>
               <SidebarContent selected={selected} user={user} signOut={signOut} activeGroup={activeGroup} visibleItems={visibleItems} mobile onNavigate={() => setMobileOpen(false)} />
             </SheetContent>
           </Sheet>
 
-          <div className="min-w-0 flex-1">
-            <Breadcrumb>
-              <BreadcrumbList className="flex-nowrap text-xs">
-                <BreadcrumbItem className="hidden sm:inline-flex"><span className="text-muted-foreground">Provider</span></BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden sm:inline-flex" />
-                <BreadcrumbItem className="hidden md:inline-flex"><span>{activeGroup.label}</span></BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:inline-flex" />
-                <BreadcrumbItem className="min-w-0"><BreadcrumbPage className="truncate font-medium">{item.label}</BreadcrumbPage></BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-            <p className="mt-0.5 hidden truncate text-[10px] text-muted-foreground xl:block">{item.description}</p>
+          <Tooltip>
+            <TooltipTrigger render={<Button variant="ghost" size="icon-sm" className="hidden lg:inline-flex" onClick={onToggleSidebar} aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} />}><PanelLeft /></TooltipTrigger>
+            <TooltipContent>{sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}</TooltipContent>
+          </Tooltip>
+          <Separator orientation="vertical" className="mx-1 hidden h-5 lg:block" />
+
+          <button type="button" onClick={() => setSearchOpen(true)} className="flex h-8 min-w-0 flex-1 items-center gap-2 rounded-lg border bg-background px-3 text-left shadow-xs transition-colors hover:bg-muted/50 sm:max-w-sm lg:max-w-md">
+            <Search className="size-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">Search...</span>
+            <kbd className="hidden rounded border bg-muted px-1.5 py-0.5 font-mono text-[9px] text-muted-foreground sm:inline">Ctrl K</kbd>
+          </button>
+
+          <div className="ml-auto flex items-center gap-0.5">
+            <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm" onClick={reload} disabled={loading} aria-label="Refresh data" />}>{loading ? <LoaderCircle className="animate-spin" /> : <RefreshCw />}</TooltipTrigger><TooltipContent>Refresh Go data</TooltipContent></Tooltip>
+            <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm" onClick={toggleTheme} aria-label={darkMode ? 'Use light theme' : 'Use dark theme'} />}>{darkMode ? <Sun /> : <Moon />}</TooltipTrigger><TooltipContent>{darkMode ? 'Light theme' : 'Dark theme'}</TooltipContent></Tooltip>
+            {chatVisible ? <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm" className="hidden sm:inline-flex" onClick={() => navigateProvider('chat')} aria-label="Messages" />}><Mail /></TooltipTrigger><TooltipContent>Messages</TooltipContent></Tooltip> : null}
+            {notificationsVisible ? <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm" onClick={() => navigateProvider('notifications')} aria-label="Notifications" />}><span className="relative"><Bell className="size-4" /><span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-red-500 ring-2 ring-background" /></span></TooltipTrigger><TooltipContent>Notifications</TooltipContent></Tooltip> : null}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger render={<Button variant="ghost" className="ml-1 h-8 gap-1.5 rounded-lg px-1.5" aria-label="Open account menu" />}>
+                <Avatar className="size-6 rounded-md"><AvatarFallback className="rounded-md bg-primary text-[8px] text-primary-foreground">{initials(user?.name || user?.email)}</AvatarFallback></Avatar>
+                <span className="hidden max-w-28 truncate text-xs font-medium xl:block">{user?.name || 'Provider'}</span>
+                <ChevronDown className="hidden size-3 text-muted-foreground xl:block" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel className="p-2 font-normal"><span className="flex items-center gap-2"><Avatar className="size-9 rounded-lg"><AvatarFallback className="rounded-lg bg-primary text-xs text-primary-foreground">{initials(user?.name || user?.email)}</AvatarFallback></Avatar><span className="min-w-0"><strong className="block truncate text-sm">{user?.name || 'Provider'}</strong><span className="block truncate text-xs text-muted-foreground">{user?.email}</span></span></span></DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled><ScopeIcon />{scope.label}<Badge variant="secondary" className="ml-auto text-[9px]">{scope.type.toUpperCase()}</Badge></DropdownMenuItem>
+                <DropdownMenuItem disabled><CheckCircle2 className="text-emerald-600" />Go services connected</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {profileVisible ? <><DropdownMenuItem onClick={() => navigateProvider('profile')}><UserRound />Business profile</DropdownMenuItem><DropdownMenuItem onClick={() => navigateProvider('profile')}><Settings2 />Provider settings</DropdownMenuItem></> : <DropdownMenuItem disabled><Settings2 />Managed by Head Office</DropdownMenuItem>}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem variant="destructive" onClick={signOut}><LogOut />Sign out</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="hidden h-9 w-full max-w-64 justify-start gap-2 px-3 text-muted-foreground md:flex xl:max-w-80"
-            onClick={() => setSearchOpen(true)}
-          >
-            <Search className="size-3.5" />
-            <span className="flex-1 text-left text-xs font-normal">Search dashboard...</span>
-            <Badge variant="secondary" className="h-5 rounded px-1.5 font-mono text-[9px]">Ctrl K</Badge>
-          </Button>
-          <Tooltip>
-            <TooltipTrigger render={<Button variant="ghost" size="icon-sm" className="md:hidden" onClick={() => setSearchOpen(true)} aria-label="Search dashboard" />}><Search /></TooltipTrigger>
-            <TooltipContent>Search dashboard</TooltipContent>
-          </Tooltip>
-
-          <Separator orientation="vertical" className="mx-1 hidden h-7 sm:block" />
-
-          <Badge variant="outline" className="hidden h-8 gap-1.5 rounded-lg px-2.5 text-[10px] font-medium xl:inline-flex">
-            <span className="relative flex size-2"><span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-60" /><span className="relative inline-flex size-2 rounded-full bg-emerald-500" /></span>
-            Go services online
-          </Badge>
-
-          <Tooltip>
-            <TooltipTrigger render={<Button variant="ghost" size="icon-sm" onClick={reload} disabled={loading} aria-label="Refresh dashboard data" />}>
-              {loading ? <LoaderCircle className="animate-spin" /> : <RefreshCw />}
-            </TooltipTrigger>
-            <TooltipContent>Refresh dashboard data</TooltipContent>
-          </Tooltip>
-          {chatVisible ? (
-            <Tooltip>
-              <TooltipTrigger render={<Button variant="ghost" size="icon-sm" onClick={() => navigateProvider('chat')} aria-label="Messages" />}><MessageCircle /></TooltipTrigger>
-              <TooltipContent>Messages</TooltipContent>
-            </Tooltip>
-          ) : null}
-          {notificationsVisible ? (
-            <Tooltip>
-              <TooltipTrigger render={<Button variant="ghost" size="icon-sm" onClick={() => navigateProvider('notifications')} aria-label="Notifications" />}>
-                <span className="relative"><Bell className="size-4" /><span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-orange-500 ring-2 ring-background" /></span>
-              </TooltipTrigger>
-              <TooltipContent>Notifications</TooltipContent>
-            </Tooltip>
-          ) : null}
-
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" className="h-9 gap-2 px-1.5 sm:pr-2.5" aria-label="Open account menu" />}>
-              <Avatar className="size-6"><AvatarFallback className="bg-foreground text-[9px] text-background">{initials(user?.name || user?.email)}</AvatarFallback></Avatar>
-              <span className="hidden min-w-0 text-left lg:block">
-                <span className="block max-w-28 truncate text-xs font-medium leading-none">{user?.name || 'Provider'}</span>
-                <span className="mt-1 block max-w-28 truncate text-[9px] leading-none text-muted-foreground">{scope.label}</span>
-              </span>
-              <ChevronDown className="hidden size-3 text-muted-foreground lg:block" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuLabel className="p-2 font-normal">
-                <div className="flex items-center gap-2.5">
-                  <Avatar className="size-9"><AvatarFallback className="bg-foreground text-xs text-background">{initials(user?.name || user?.email)}</AvatarFallback></Avatar>
-                  <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-foreground">{user?.name || 'Provider'}</span><span className="block truncate text-[10px] text-muted-foreground">{user?.email}</span></span>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>Workspace</DropdownMenuLabel>
-              <DropdownMenuItem disabled className="py-2"><ScopeIcon /><span className="flex-1">{scope.label}</span><Badge variant={scope.type === 'central' ? 'default' : 'secondary'} className="text-[8px]">{scope.type === 'central' ? 'CENTRAL' : 'BRANCH'}</Badge></DropdownMenuItem>
-              <DropdownMenuItem disabled><CheckCircle2 className="text-emerald-600" />Go services connected</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {profileVisible ? (
-                <>
-                  <DropdownMenuItem onClick={() => navigateProvider('profile')}><UserRound />Business profile</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigateProvider('profile')}><Settings2 />Provider settings</DropdownMenuItem>
-                </>
-              ) : <DropdownMenuItem disabled><ShieldCheck />Managed by Head Office</DropdownMenuItem>}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={signOut}><LogOut />Sign out</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </header>
-
       <DashboardSearch open={searchOpen} onOpenChange={setSearchOpen} visibleItems={visibleItems} selected={selected} />
     </>
   );

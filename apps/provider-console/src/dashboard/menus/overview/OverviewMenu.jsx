@@ -10,52 +10,41 @@ import {
   XAxis,
 } from 'recharts';
 import {
+  ArrowRight,
   ArrowUpRight,
   CalendarDays,
   CalendarRange,
-  ChevronRight,
   CircleDollarSign,
+  Clock3,
   MapPin,
-  MoreHorizontal,
-  Plus,
   Scissors,
-  Tags,
+  TrendingDown,
+  TrendingUp,
+  UserRoundPlus,
   UsersRound,
+  WalletCards,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Empty, Status } from '../../components/common/DataDisplay';
 import { isBranchAccount } from '../../config/navigation';
-import { listFrom, money, statusLabel, today } from '../../lib/data';
+import { listFrom, money, today } from '../../lib/data';
 
-const revenueConfig = {
-  revenue: { label: 'Revenue', color: 'var(--chart-1)' },
-  bookings: { label: 'Bookings', color: 'var(--chart-2)' },
+const paidStatuses = new Set(['paid', 'settlement', 'success']);
+const closedStatuses = new Set(['completed', 'cancelled', 'provider_cancelled', 'customer_cancelled', 'no_show']);
+const performanceConfig = {
+  revenue: { label: 'Paid revenue (million)', color: 'var(--chart-1)' },
+  bookings: { label: 'Bookings', color: 'var(--chart-3)' },
 };
-
-const appointmentConfig = {
-  appointments: { label: 'Appointments', color: 'var(--chart-1)' },
+const volumeConfig = {
+  completed: { label: 'Completed', color: 'var(--chart-1)' },
+  active: { label: 'Active', color: 'var(--chart-3)' },
 };
 
 function dateValue(item) {
@@ -66,28 +55,8 @@ function dateKey(value) {
   return String(value || '').slice(0, 10);
 }
 
-function dayLabel(value, long = false) {
-  if (!value) return '-';
-  return new Intl.DateTimeFormat('en', { weekday: long ? 'long' : 'short', timeZone: 'Asia/Jakarta' }).format(new Date(`${dateKey(value)}T12:00:00+07:00`));
-}
-
-function dateParts(value) {
-  if (!value) return { day: '--', month: '---' };
-  const date = new Date(`${dateKey(value)}T12:00:00+07:00`);
-  return {
-    day: new Intl.DateTimeFormat('en', { day: '2-digit', timeZone: 'Asia/Jakarta' }).format(date),
-    month: new Intl.DateTimeFormat('en', { month: 'short', timeZone: 'Asia/Jakarta' }).format(date),
-  };
-}
-
-function startTime(item) {
-  const value = item?.starts_at || item?.start_time || '';
-  if (String(value).includes('T')) return String(value).slice(11, 16);
-  return String(value).slice(0, 5) || '--:--';
-}
-
 function amountOf(item) {
-  return Number(item?.amount_minor_units || item?.amount_minor || item?.total_price_minor_units || item?.payable_minor_units || 0);
+  return Number(item?.amount_minor_units || item?.amount_minor || item?.total_price_minor_units || item?.total_minor || item?.payable_minor_units || 0);
 }
 
 function withinLastDays(value, days) {
@@ -102,235 +71,150 @@ function matchesBranch(item, branch) {
   return branch === 'all' || String(item?.branch_id || item?.location_id || '') === branch;
 }
 
+function initials(value) {
+  return String(value || 'C').trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+}
+
+function readableDate(item) {
+  const value = dateValue(item);
+  if (!value) return 'Not scheduled';
+  const date = new Date(`${dateKey(value)}T12:00:00+07:00`);
+  return Number.isNaN(date.getTime()) ? dateKey(value) : new Intl.DateTimeFormat('en', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(date);
+}
+
+function startTime(item) {
+  const value = String(item?.starts_at || item?.start_time || '');
+  return value.includes('T') ? value.slice(11, 16) : (value.slice(0, 5) || '--:--');
+}
+
 function chartDates(days, bookings, payments) {
   return Array.from({ length: days }, (_, index) => {
     const date = new Date(Date.now() - ((days - index - 1) * 86400000));
     const key = date.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
-    const dayBookings = bookings.filter((item) => dateKey(dateValue(item)) === key);
-    const dayPayments = payments.filter((item) => dateKey(dateValue(item)) === key && ['paid', 'settlement', 'success'].includes(String(item.status || '').toLowerCase()));
+    const dailyBookings = bookings.filter((item) => dateKey(dateValue(item)) === key);
+    const dailyPayments = payments.filter((item) => dateKey(dateValue(item)) === key && paidStatuses.has(String(item.status || '').toLowerCase()));
     return {
       key,
-      day: new Intl.DateTimeFormat('en', { weekday: 'short', timeZone: 'Asia/Jakarta' }).format(date),
-      revenue: dayPayments.reduce((sum, item) => sum + amountOf(item), 0) / 100,
-      bookings: dayBookings.length,
+      day: new Intl.DateTimeFormat('en', { day: '2-digit', month: 'short', timeZone: 'Asia/Jakarta' }).format(date),
+      revenue: Number((dailyPayments.reduce((sum, item) => sum + amountOf(item), 0) / 100000000).toFixed(2)),
+      bookings: dailyBookings.length,
     };
   });
 }
 
-function upcomingDates(bookings) {
-  return Array.from({ length: 5 }, (_, index) => {
-    const date = new Date(Date.now() + (index * 86400000));
-    const key = date.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
-    return {
-      key,
-      day: new Intl.DateTimeFormat('en', { weekday: 'short', timeZone: 'Asia/Jakarta' }).format(date),
-      appointments: bookings.filter((item) => dateKey(dateValue(item)) === key).length,
-    };
-  });
+function MetricCard({ label, value, detail, change, icon: Icon, negative = false }) {
+  const TrendIcon = negative ? TrendingDown : TrendingUp;
+  return (
+    <Card className="bg-linear-to-t from-primary/[0.035] to-card">
+      <CardHeader>
+        <CardTitle><span className="grid size-7 place-items-center rounded-lg border bg-muted text-muted-foreground"><Icon className="size-4" /></span></CardTitle>
+        <CardDescription>{label}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap items-center gap-2"><strong className="text-3xl font-medium leading-none tracking-tight tabular-nums">{value}</strong><Badge variant={negative ? 'destructive' : 'secondary'}><TrendIcon className="size-3" />{change}</Badge></div>
+        <p className="mt-2 text-xs text-muted-foreground">{detail}</p>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function OverviewMenu({ data, navigate, user }) {
-  const [range, setRange] = useState('7');
+  const [range, setRange] = useState('30');
   const [branch, setBranch] = useState('all');
-  const [bookingStatus, setBookingStatus] = useState('all');
-  const [scheduleTab, setScheduleTab] = useState('upcoming');
   const bookings = listFrom(data.bookings);
   const payments = listFrom(data.payments);
   const branches = listFrom(data.branches);
+  const staff = listFrom(data.staff);
+  const services = listFrom(data.services);
+  const notifications = listFrom(data.notifications);
   const days = Number(range);
   const branchRestricted = isBranchAccount(user);
   const scopedBranch = branchRestricted ? String(user.branch_id) : branch;
   const visibleBranches = branchRestricted ? branches.filter((item) => String(item.id) === scopedBranch) : branches;
 
-  const filteredBookings = useMemo(() => bookings.filter((item) => (
-    withinLastDays(dateValue(item), days)
-    && matchesBranch(item, scopedBranch)
-    && (bookingStatus === 'all' || String(item.status || '').toLowerCase() === bookingStatus)
-  )), [bookings, bookingStatus, scopedBranch, days]);
-
-  const filteredPayments = useMemo(() => payments.filter((item) => withinLastDays(dateValue(item), days) && matchesBranch(item, scopedBranch)), [payments, scopedBranch, days]);
-  const revenueData = useMemo(() => chartDates(days, filteredBookings, filteredPayments), [days, filteredBookings, filteredPayments]);
-  const appointmentsData = useMemo(() => upcomingDates(bookings.filter((item) => matchesBranch(item, scopedBranch))), [bookings, scopedBranch]);
-  const paidPayments = filteredPayments.filter((item) => ['paid', 'settlement', 'success'].includes(String(item.status || '').toLowerCase()));
+  const filteredBookings = useMemo(() => bookings.filter((item) => withinLastDays(dateValue(item), days) && matchesBranch(item, scopedBranch)), [bookings, days, scopedBranch]);
+  const filteredPayments = useMemo(() => payments.filter((item) => withinLastDays(dateValue(item), days) && matchesBranch(item, scopedBranch)), [payments, days, scopedBranch]);
+  const performanceData = useMemo(() => chartDates(days, filteredBookings, filteredPayments), [days, filteredBookings, filteredPayments]);
+  const paidPayments = filteredPayments.filter((item) => paidStatuses.has(String(item.status || '').toLowerCase()));
   const paidAmount = paidPayments.reduce((sum, item) => sum + amountOf(item), 0);
-  const activeBookings = filteredBookings.filter((item) => !['completed', 'cancelled', 'provider_cancelled', 'customer_cancelled', 'no_show'].includes(String(item.status || '').toLowerCase()));
-  const todayKey = today();
-  const todayBookings = bookings.filter((item) => dateKey(dateValue(item)) === todayKey && matchesBranch(item, scopedBranch));
-  const upcomingBookings = bookings
-    .filter((item) => dateKey(dateValue(item)) >= todayKey && matchesBranch(item, scopedBranch) && !['completed', 'cancelled', 'provider_cancelled', 'customer_cancelled', 'no_show'].includes(String(item.status || '').toLowerCase()))
-    .sort((left, right) => String(dateValue(left)).localeCompare(String(dateValue(right))));
-  const scheduleItems = (scheduleTab === 'today' ? todayBookings : upcomingBookings).slice(0, 4);
-  const maxAppointments = Math.max(...appointmentsData.map((item) => item.appointments), 1);
-  const pipeline = [
-    { label: 'Scheduled', statuses: ['pending', 'confirmed', 'waiting', 'called'], tone: '[&_[data-slot=progress-indicator]]:bg-orange-500' },
-    { label: 'Checked in', statuses: ['checked_in'], tone: '[&_[data-slot=progress-indicator]]:bg-orange-400' },
-    { label: 'In service', statuses: ['in_progress'], tone: '[&_[data-slot=progress-indicator]]:bg-orange-300' },
-    { label: 'Completed', statuses: ['completed'], tone: '[&_[data-slot=progress-indicator]]:bg-orange-200' },
-  ].map((stage) => ({ ...stage, count: filteredBookings.filter((item) => stage.statuses.includes(String(item.status || '').toLowerCase())).length }));
-  const pipelineTotal = Math.max(filteredBookings.length, 1);
+  const pendingAmount = filteredPayments.filter((item) => !paidStatuses.has(String(item.status || '').toLowerCase())).reduce((sum, item) => sum + amountOf(item), 0);
+  const completedBookings = filteredBookings.filter((item) => String(item.status || '').toLowerCase() === 'completed');
+  const activeBookings = filteredBookings.filter((item) => !closedStatuses.has(String(item.status || '').toLowerCase()));
+  const todayBookings = bookings.filter((item) => dateKey(dateValue(item)) === today() && matchesBranch(item, scopedBranch));
+  const activeStaff = staff.filter((item) => String(item.status || 'active').toLowerCase() === 'active');
+  const customerCount = new Set(filteredBookings.map((item) => item.customer_id || item.customer_email || item.customer_phone || item.customer_snapshot?.email || item.customer_snapshot?.phone).filter(Boolean)).size;
+  const completionRate = filteredBookings.length ? Math.round((completedBookings.length / filteredBookings.length) * 100) : 0;
+  const recentBookings = [...filteredBookings].sort((left, right) => String(dateValue(right)).localeCompare(String(dateValue(left)))).slice(0, 7);
+  const recentPayments = [...filteredPayments].sort((left, right) => String(dateValue(right)).localeCompare(String(dateValue(left)))).slice(0, 5);
+  const chartInterval = Math.max(Math.ceil(days / 7) - 1, 0);
+  const volumeData = performanceData.slice(-7).map((item) => ({ ...item, completed: completedBookings.filter((booking) => dateKey(dateValue(booking)) === item.key).length, active: activeBookings.filter((booking) => dateKey(dateValue(booking)) === item.key).length }));
 
   return (
-    <div className="space-y-3">
-      <section className="flex flex-col gap-3 rounded-lg border bg-background p-2.5 sm:flex-row sm:items-center sm:justify-between" aria-label="Dashboard filters">
-        <div className="flex flex-wrap items-center gap-2">
-          <Select value={range} onValueChange={setRange}>
-            <SelectTrigger size="sm" className="min-w-32 bg-background"><CalendarRange className="text-muted-foreground" /><SelectValue /></SelectTrigger>
-            <SelectContent align="start">
-              <SelectItem value="7">Last 7 days</SelectItem>
-              <SelectItem value="14">Last 14 days</SelectItem>
-              <SelectItem value="30">Last 30 days</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={scopedBranch} onValueChange={setBranch} disabled={branchRestricted}>
-            <SelectTrigger size="sm" className="min-w-32 bg-background"><MapPin className="text-muted-foreground" /><SelectValue /></SelectTrigger>
-            <SelectContent align="start">
-              {!branchRestricted ? <SelectItem value="all">All locations</SelectItem> : null}
-              {visibleBranches.map((item) => <SelectItem key={item.id} value={String(item.id)}>{item.branch_name || item.name || `Location #${item.id}`}</SelectItem>)}
-              {branchRestricted && !visibleBranches.length ? <SelectItem value={scopedBranch}>{`Branch #${scopedBranch}`}</SelectItem> : null}
-            </SelectContent>
-          </Select>
-          <Select value={bookingStatus} onValueChange={setBookingStatus}>
-            <SelectTrigger size="sm" className="min-w-32 bg-background"><Tags className="text-muted-foreground" /><SelectValue /></SelectTrigger>
-            <SelectContent align="start">
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="confirmed">Confirmed</SelectItem>
-              <SelectItem value="waiting">Waiting</SelectItem>
-              <SelectItem value="checked_in">Checked in</SelectItem>
-              <SelectItem value="in_progress">In service</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-            </SelectContent>
-          </Select>
+    <div className="@container/main flex flex-col gap-4 md:gap-6">
+      <header className="flex flex-col justify-between gap-3 border-b pb-5 sm:flex-row sm:items-end">
+        <div><div className="flex items-center gap-1.5 text-xs text-muted-foreground"><span>Provider</span><span>/</span><span className="font-medium text-foreground">Overview</span></div><h1 className="mt-2 text-2xl font-semibold tracking-tight">Provider dashboard</h1><p className="mt-1 text-sm text-muted-foreground">Live operational data from TAKEIN Go microservices.</p></div>
+        <div className="flex flex-wrap gap-2">
+          <Select value={range} onValueChange={setRange}><SelectTrigger className="min-w-32"><CalendarRange /><SelectValue /></SelectTrigger><SelectContent align="end"><SelectItem value="7">Last 7 days</SelectItem><SelectItem value="30">Last 30 days</SelectItem><SelectItem value="90">Last 90 days</SelectItem></SelectContent></Select>
+          <Select value={scopedBranch} onValueChange={setBranch} disabled={branchRestricted}><SelectTrigger className="min-w-40"><MapPin /><SelectValue /></SelectTrigger><SelectContent align="end">{!branchRestricted ? <SelectItem value="all">All locations</SelectItem> : null}{visibleBranches.map((item) => <SelectItem key={item.id} value={String(item.id)}>{item.branch_name || item.name || `Location #${item.id}`}</SelectItem>)}{branchRestricted && !visibleBranches.length ? <SelectItem value={scopedBranch}>{`Branch #${scopedBranch}`}</SelectItem> : null}</SelectContent></Select>
         </div>
-        <div className="flex items-center gap-2 px-1 text-[10px] text-muted-foreground"><span className="size-1.5 rounded-full bg-emerald-500" />Live data from Go services</div>
+      </header>
+
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Paid revenue" value={money(paidAmount)} detail={`${paidPayments.length} settled transactions`} change={`${days} days`} icon={CircleDollarSign} />
+        <MetricCard label="Bookings" value={filteredBookings.length} detail={`${todayBookings.length} appointments today`} change={`${activeBookings.length} active`} icon={CalendarDays} />
+        <MetricCard label="Unique customers" value={customerCount} detail="Customers in the selected period" change={`${completionRate}% done`} icon={UserRoundPlus} />
+        <MetricCard label="Active team" value={activeStaff.length} detail={`${services.length} services available`} change={`${visibleBranches.length || 1} locations`} icon={UsersRound} />
       </section>
 
-      <section className="grid gap-3 xl:grid-cols-[minmax(0,1.65fr)_minmax(300px,.7fr)]">
-        <Card className="min-w-0 gap-0 py-0 shadow-sm">
-          <CardHeader className="border-b py-3.5">
-            <div><CardTitle className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Recent sales</CardTitle><CardDescription className="mt-1 text-[10px]">Payment Service activity for the selected period.</CardDescription></div>
-            <CardAction>
-              <DropdownMenu>
-                <DropdownMenuTrigger render={<Button variant="ghost" size="icon-xs" aria-label="Revenue card menu" />}><MoreHorizontal /></DropdownMenuTrigger>
-                <DropdownMenuContent align="end"><DropdownMenuLabel>Revenue actions</DropdownMenuLabel><DropdownMenuItem onClick={() => navigate('payments')}>Open payments</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem onClick={() => navigate('subscriptions')}>Manage subscription</DropdownMenuItem></DropdownMenuContent>
-              </DropdownMenu>
-            </CardAction>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div><p className="text-2xl font-semibold tracking-tight sm:text-3xl">{money(paidAmount)}</p><p className="mt-0.5 text-[10px] text-muted-foreground">Last {days} days</p></div>
-              <div className="flex items-center gap-2"><Badge variant="secondary" className="rounded-md">{paidPayments.length} paid</Badge><Badge variant="outline" className="rounded-md">{activeBookings.length} active</Badge></div>
-            </div>
-            <ChartContainer config={revenueConfig} className="mt-2 h-[220px] w-full aspect-auto">
-              <AreaChart data={revenueData} margin={{ left: 4, right: 4, top: 18, bottom: 0 }} accessibilityLayer>
-                <defs>
-                  <linearGradient id="providerRevenue" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={0.22} /><stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={0} /></linearGradient>
-                </defs>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={10} />
-                <ChartTooltip cursor={{ strokeDasharray: '4 4' }} content={<ChartTooltipContent indicator="line" />} />
-                <Area dataKey="revenue" type="monotone" stroke="var(--color-revenue)" fill="url(#providerRevenue)" strokeWidth={2} dot={false} />
-                <Area dataKey="bookings" type="monotone" stroke="var(--color-bookings)" fill="transparent" strokeWidth={1.5} dot={false} />
-              </AreaChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="min-w-0 gap-0 py-0 shadow-sm">
-          <CardHeader className="border-b py-3.5">
-            <div><CardTitle className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Upcoming appointments</CardTitle><CardDescription className="mt-1 text-[10px]">Five-day booking outlook.</CardDescription></div>
-            <CardAction><Button variant="ghost" size="icon-xs" onClick={() => navigate('calendar')} aria-label="Open calendar"><ArrowUpRight /></Button></CardAction>
-          </CardHeader>
-          <CardContent className="p-4">
-            <p className="text-2xl font-semibold tracking-tight sm:text-3xl">{appointmentsData.reduce((sum, item) => sum + item.appointments, 0)}</p>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">Appointments scheduled</p>
-            <ChartContainer config={appointmentConfig} className="mt-3 h-[220px] w-full aspect-auto">
-              <BarChart data={appointmentsData} margin={{ left: 0, right: 0, top: 18, bottom: 0 }} accessibilityLayer>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={10} />
-                <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel />} />
-                <Bar dataKey="appointments" fill="var(--color-appointments)" radius={[5, 5, 1, 1]} maxBarSize={22} />
-              </BarChart>
-            </ChartContainer>
-            <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground"><span>Peak capacity</span><strong className="text-foreground">{maxAppointments} / day</strong></div>
-          </CardContent>
-        </Card>
-      </section>
-
-      <Card className="gap-0 py-0 shadow-sm">
-        <CardHeader className="border-b py-3.5">
-          <div><CardTitle className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">Appointment activity</CardTitle><CardDescription className="mt-1 text-[10px]">Schedule, booking pipeline, and upcoming queue.</CardDescription></div>
-          <CardAction><Button size="xs" onClick={() => navigate('walk-in')}><Plus />Add walk-in</Button></CardAction>
+      <Card>
+        <CardHeader>
+          <CardTitle>Provider performance</CardTitle>
+          <CardDescription>Booking volume and paid revenue for the selected scope.</CardDescription>
+          <CardAction><Button variant="outline" size="sm" onClick={() => navigate('payments')}>View report<ArrowUpRight /></Button></CardAction>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="grid xl:grid-cols-[minmax(300px,.9fr)_minmax(300px,1fr)_minmax(270px,.7fr)]">
-            <section className="min-w-0 border-b p-4 xl:border-b-0 xl:border-r" aria-labelledby="schedule-heading">
-              <div className="mb-3 flex items-center justify-between"><div><h3 id="schedule-heading" className="text-xs font-medium">Schedule</h3><p className="mt-0.5 text-[10px] text-muted-foreground">Provider appointments</p></div><CalendarDays className="size-4 text-muted-foreground" /></div>
-              <Tabs value={scheduleTab} onValueChange={setScheduleTab}>
-                <TabsList className="h-7"><TabsTrigger value="today" className="text-[10px]">Today</TabsTrigger><TabsTrigger value="upcoming" className="text-[10px]">Upcoming</TabsTrigger></TabsList>
-                {['today', 'upcoming'].map((tab) => (
-                  <TabsContent key={tab} value={tab} className="mt-3">
-                    {scheduleItems.length ? <div className="grid gap-2">{scheduleItems.map((item, index) => {
-                      const date = dateParts(dateValue(item));
-                      return (
-                        <button key={item.id || index} className="flex w-full items-center gap-3 rounded-lg border p-2.5 text-left transition-colors hover:bg-muted/35" onClick={() => navigate('bookings')}>
-                          <span className="grid size-9 shrink-0 place-items-center rounded-md bg-muted text-center"><strong className="text-xs leading-none">{date.day}</strong><span className="text-[8px] uppercase text-muted-foreground">{date.month}</span></span>
-                          <span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-medium">{item.customer_name || item.customer_snapshot?.name || 'Walk-in customer'}</span><span className="mt-0.5 block truncate text-[9px] text-muted-foreground">{startTime(item)} · {item.service_name || item.service_snapshot?.name || item.booking_code || `Booking #${item.id}`}</span></span>
-                          <span className="text-[10px] font-medium">{money(amountOf(item))}</span>
-                        </button>
-                      );
-                    })}</div> : <Empty title="No appointments" description="No bookings match this schedule." />}
-                  </TabsContent>
-                ))}
-              </Tabs>
-            </section>
-
-            <section className="min-w-0 border-b p-4 xl:border-b-0 xl:border-r" aria-labelledby="pipeline-heading">
-              <div className="mb-4 flex items-center justify-between"><div><h3 id="pipeline-heading" className="text-xs font-medium">Booking pipeline</h3><p className="mt-0.5 text-[10px] text-muted-foreground">Last {days} days conversion</p></div><Badge variant="outline" className="rounded-md">{filteredBookings.length} total</Badge></div>
-              <div className="grid gap-4">
-                {pipeline.map((stage) => {
-                  const percentage = Math.round((stage.count / pipelineTotal) * 100);
-                  return (
-                    <Progress key={stage.label} value={percentage} className={`gap-1.5 ${stage.tone} [&_[data-slot=progress-track]]:h-2`}>
-                      <ProgressLabel className="text-[11px]">{stage.label}</ProgressLabel>
-                      <ProgressValue className="text-[10px]">{stage.count} · {percentage}%</ProgressValue>
-                    </Progress>
-                  );
-                })}
-              </div>
-              <Separator className="my-4" />
-              <div className="grid grid-cols-3 gap-2">
-                <div><p className="text-[9px] text-muted-foreground">Revenue</p><p className="mt-1 text-xs font-semibold">{money(paidAmount)}</p></div>
-                <div><p className="text-[9px] text-muted-foreground">Bookings</p><p className="mt-1 text-xs font-semibold">{filteredBookings.length}</p></div>
-                <div><p className="text-[9px] text-muted-foreground">Completed</p><p className="mt-1 text-xs font-semibold">{pipeline.find((item) => item.label === 'Completed')?.count || 0}</p></div>
-              </div>
-            </section>
-
-            <section className="min-w-0 p-4" aria-labelledby="queue-heading">
-              <div className="mb-3 flex items-center justify-between"><div><h3 id="queue-heading" className="text-xs font-medium">Upcoming queue</h3><p className="mt-0.5 text-[10px] text-muted-foreground">Next customer arrivals</p></div><Button variant="ghost" size="icon-xs" onClick={() => navigate('queue')} aria-label="Open queue"><ArrowUpRight /></Button></div>
-              {upcomingBookings.length ? <div className="grid gap-1">{upcomingBookings.slice(0, 5).map((item, index) => (
-                <button key={item.id || index} className="flex items-center gap-2 rounded-md px-1 py-2 text-left hover:bg-muted/40" onClick={() => navigate('queue')}>
-                  <Avatar className="size-7"><AvatarFallback className="bg-orange-50 text-[9px] font-semibold text-orange-700">{String(item.customer_name || item.customer_snapshot?.name || 'C').slice(0, 1)}</AvatarFallback></Avatar>
-                  <span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-medium">{item.customer_name || item.customer_snapshot?.name || 'Customer'}</span><span className="mt-0.5 flex items-center gap-1 text-[9px] text-muted-foreground"><Scissors className="size-2.5" />{item.service_name || item.service_snapshot?.name || statusLabel(item.status)}</span></span>
-                  <span className="text-right"><span className="block text-[10px] font-medium">{startTime(item)}</span><span className="text-[8px] text-muted-foreground">{dayLabel(dateValue(item))}</span></span>
-                  <ChevronRight className="size-3 text-muted-foreground" />
-                </button>
-              ))}</div> : <Empty title="Queue is clear" description="Upcoming customers will appear here." />}
-              <Button variant="ghost" size="xs" className="mt-2 w-full justify-center" onClick={() => navigate('bookings')}>View all bookings <ChevronRight /></Button>
-            </section>
-          </div>
+        <CardContent>
+          <div className="mb-5 flex flex-wrap items-center gap-x-7 gap-y-3 border-b pb-5"><div><p className="text-xs text-muted-foreground">Total earnings</p><p className="mt-1 text-xl font-semibold">{money(paidAmount)}</p></div><Separator orientation="vertical" className="hidden h-10 sm:block" /><div><p className="text-xs text-muted-foreground">Pending settlement</p><p className="mt-1 text-xl font-semibold">{money(pendingAmount)}</p></div><Separator orientation="vertical" className="hidden h-10 sm:block" /><div><p className="text-xs text-muted-foreground">Completion rate</p><p className="mt-1 text-xl font-semibold">{completionRate}%</p></div></div>
+          <ChartContainer config={performanceConfig} className="h-80 w-full aspect-auto">
+            <AreaChart data={performanceData} margin={{ left: 4, right: 4, top: 8 }} accessibilityLayer>
+              <defs><linearGradient id="providerRevenue" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={0.3} /><stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={0.02} /></linearGradient></defs>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={9} interval={chartInterval} />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" />} />
+              <Area dataKey="revenue" type="natural" fill="url(#providerRevenue)" stroke="var(--color-revenue)" strokeWidth={1.5} dot={false} />
+              <Area dataKey="bookings" type="natural" fill="transparent" stroke="var(--color-bookings)" strokeWidth={1.4} dot={false} />
+            </AreaChart>
+          </ChartContainer>
         </CardContent>
       </Card>
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        {[
-          { label: 'Active bookings', value: activeBookings.length, detail: 'Operational workload', icon: CalendarDays },
-          { label: 'Paid transactions', value: paidPayments.length, detail: money(paidAmount), icon: CircleDollarSign },
-          { label: branchRestricted ? 'Branch scope' : 'Locations', value: branchRestricted ? 1 : branches.length, detail: `${bookings.length} total bookings`, icon: UsersRound },
-        ].map((item) => {
-          const Icon = item.icon;
-          return <Card key={item.label} size="sm" className="shadow-none"><CardContent className="flex items-center gap-3"><span className="grid size-8 place-items-center rounded-md bg-orange-50 text-orange-700"><Icon className="size-3.5" /></span><div><p className="text-[10px] text-muted-foreground">{item.label}</p><p className="mt-0.5 text-sm font-semibold">{item.value}</p></div><p className="ml-auto text-[9px] text-muted-foreground">{item.detail}</p></CardContent></Card>;
-        })}
+      <section className="grid gap-4 xl:grid-cols-3">
+        <Card className="xl:col-span-2">
+          <CardHeader><CardTitle>Recent appointments</CardTitle><CardDescription>Latest bookings returned by Booking Service.</CardDescription><CardAction><Button variant="outline" size="sm" onClick={() => navigate('bookings')}>All bookings<ArrowRight /></Button></CardAction></CardHeader>
+          <CardContent className="px-0">
+            {recentBookings.length ? <Table><TableHeader><TableRow><TableHead className="pl-4">Customer</TableHead><TableHead>Schedule</TableHead><TableHead>Service</TableHead><TableHead>Status</TableHead><TableHead className="pr-4 text-right">Amount</TableHead></TableRow></TableHeader><TableBody>{recentBookings.map((item, index) => { const customer = item.customer_name || item.customer_snapshot?.name || 'Walk-in customer'; return <TableRow key={item.id || index}><TableCell className="pl-4"><div className="flex items-center gap-2"><Avatar className="size-7"><AvatarFallback className="text-[9px]">{initials(customer)}</AvatarFallback></Avatar><span><strong className="block max-w-40 truncate text-xs">{customer}</strong><span className="block text-[10px] text-muted-foreground">{item.booking_code || `#${item.id}`}</span></span></div></TableCell><TableCell><span className="block text-xs font-medium">{readableDate(item)}</span><span className="flex items-center gap-1 text-[10px] text-muted-foreground"><Clock3 className="size-3" />{startTime(item)}</span></TableCell><TableCell><span className="flex max-w-40 items-center gap-1.5 truncate text-xs"><Scissors className="size-3 text-muted-foreground" />{item.service_name || item.service_snapshot?.name || item.booking_type || 'Service'}</span></TableCell><TableCell><Status value={item.status} /></TableCell><TableCell className="pr-4 text-right text-xs font-medium">{money(amountOf(item))}</TableCell></TableRow>; })}</TableBody></Table> : <Empty title="No appointments yet" description="New customer bookings will appear here." />}
+          </CardContent>
+        </Card>
+
+        <div className="grid gap-4">
+          <Card>
+            <CardHeader><CardTitle>Weekly activity</CardTitle><CardDescription>Appointment stages over seven days.</CardDescription></CardHeader>
+            <CardContent><ChartContainer config={volumeConfig} className="h-40 w-full aspect-auto"><BarChart data={volumeData} accessibilityLayer><CartesianGrid vertical={false} /><XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} interval={0} /><ChartTooltip cursor={false} content={<ChartTooltipContent />} /><Bar dataKey="completed" stackId="volume" fill="var(--color-completed)" radius={[3, 3, 0, 0]} /><Bar dataKey="active" stackId="volume" fill="var(--color-active)" radius={[3, 3, 0, 0]} /></BarChart></ChartContainer></CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Workspace status</CardTitle><CardDescription>Current operational scope.</CardDescription><CardAction><span className="size-2 rounded-full bg-emerald-500" /></CardAction></CardHeader>
+            <CardContent className="grid gap-3 text-xs"><div className="flex justify-between"><span className="text-muted-foreground">Locations</span><strong>{visibleBranches.length || 1}</strong></div><Separator /><div className="flex justify-between"><span className="text-muted-foreground">Unread notifications</span><strong>{notifications.filter((item) => !item.read_at && !item.is_read).length}</strong></div><Separator /><div className="flex justify-between"><span className="text-muted-foreground">Go services</span><Badge variant="secondary">Connected</Badge></div></CardContent>
+          </Card>
+        </div>
       </section>
+
+      <Card>
+        <CardHeader><CardTitle>Recent transactions</CardTitle><CardDescription>Latest payment activity from Payment Service.</CardDescription><CardAction><Button variant="outline" size="sm" onClick={() => navigate('payments')}>Payments<WalletCards /></Button></CardAction></CardHeader>
+        <CardContent>
+          {recentPayments.length ? <div className="grid gap-1 sm:grid-cols-2 xl:grid-cols-5">{recentPayments.map((item, index) => <button key={item.id || index} type="button" className="flex items-center gap-2 rounded-lg border p-2.5 text-left transition-colors hover:bg-muted/50" onClick={() => navigate('payments')}><span className="grid size-8 shrink-0 place-items-center rounded-md bg-muted"><WalletCards className="size-4" /></span><span className="min-w-0 flex-1"><strong className="block truncate text-xs">{money(amountOf(item))}</strong><span className="block truncate text-[10px] text-muted-foreground">{readableDate(item)}</span></span><ArrowUpRight className="size-3.5 text-muted-foreground" /></button>)}</div> : <Empty title="No transactions yet" description="Paid and pending transactions will appear here." />}
+        </CardContent>
+      </Card>
+
+      <footer className="flex flex-col justify-between gap-2 border-t pt-4 text-[10px] text-muted-foreground sm:flex-row"><span>© 2026 TAKEIN Provider</span><span className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-emerald-500" />Go microservices connected</span></footer>
     </div>
   );
 }

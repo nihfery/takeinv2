@@ -300,7 +300,30 @@ func (r *runner) catalog() error {
 	if err = response.expect(http.StatusForbidden); err != nil {
 		return fmt.Errorf("cross-provider branch authorization: %w", err)
 	}
-	servicePayload := map[string]any{"title": "E2E Haircut " + r.suffix, "category": "Hair", "price": 150000, "estimated_duration": 30, "maximum_duration": 30, "is_queue_enabled": true, "is_scheduled_enabled": true, "branch_ids": []int64{r.branchID}, "status": "active"}
+	response, err = r.api.do(r.ctx, http.MethodGet, "/api/categories", nil, nil)
+	if err != nil {
+		return err
+	}
+	if err = response.expect(http.StatusOK); err != nil {
+		return err
+	}
+	var serviceCategoryID int64
+	serviceCategoryName := ""
+	if categories, ok := response.body["data"].([]any); ok {
+		for _, rawCategory := range categories {
+			category, categoryOK := rawCategory.(map[string]any)
+			if !categoryOK || number(category["parent_id"]) <= 0 || stringValue(category["status"]) != "active" {
+				continue
+			}
+			serviceCategoryID = number(category["id"])
+			serviceCategoryName = stringValue(category["name"])
+			break
+		}
+	}
+	if serviceCategoryID <= 0 || serviceCategoryName == "" {
+		return errors.New("public catalog did not return an active service subcategory")
+	}
+	servicePayload := map[string]any{"title": "E2E Haircut " + r.suffix, "category": serviceCategoryName, "category_id": serviceCategoryID, "price": 150000, "estimated_duration": 30, "maximum_duration": 30, "is_queue_enabled": true, "is_scheduled_enabled": true, "branch_ids": []int64{r.branchID}, "status": "active"}
 	response, err = r.api.withToken(r.provider.token).do(r.ctx, http.MethodPost, "/api/provider/services", servicePayload, nil)
 	if err != nil {
 		return err
@@ -309,7 +332,7 @@ func (r *runner) catalog() error {
 		return err
 	}
 	r.serviceID = number(nestedMap(response.body, "data")["id"])
-	staffFields := map[string][]string{"branch_id": {strconv.FormatInt(r.branchID, 10)}, "category_id": {"1"}, "first_name": {"E2E"}, "last_name": {"Stylist"}, "email": {"staff-" + r.suffix + "@takein.invalid"}, "status": {"active"}}
+	staffFields := map[string][]string{"branch_id": {strconv.FormatInt(r.branchID, 10)}, "category_id": {strconv.FormatInt(serviceCategoryID, 10)}, "first_name": {"E2E"}, "last_name": {"Stylist"}, "email": {"staff-" + r.suffix + "@takein.invalid"}, "status": {"active"}}
 	response, err = r.api.withToken(r.provider.token).doMultipart(r.ctx, http.MethodPost, "/api/provider/staff", staffFields, nil)
 	if err != nil {
 		return err
@@ -661,7 +684,7 @@ func (r *runner) media() error {
 		return err
 	}
 	target.Scheme = "http"
-	target.Host = "127.0.0.1:" + env("TAKEIN_OBJECT_STORAGE_PORT", "19000")
+	target.Host = env("E2E_OBJECT_STORAGE_HOST", "127.0.0.1:"+env("TAKEIN_OBJECT_STORAGE_PORT", "19000"))
 	if err = client.putURL(r.ctx, target.String(), "image/jpeg", content); err != nil {
 		return err
 	}

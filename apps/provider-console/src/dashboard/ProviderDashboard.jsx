@@ -44,6 +44,7 @@ export default function ProviderDashboard({ section = 'overview' }) {
   const [error, setError] = useState('');
   const [actionBusy, setActionBusy] = useState(null);
   const [pendingBookingAction, setPendingBookingAction] = useState(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const navigate = useCallback((target) => navigateProvider(target), []);
 
@@ -54,6 +55,18 @@ export default function ProviderDashboard({ section = 'overview' }) {
       sessionStorage.setItem('takein_provider_user', JSON.stringify(payload.user));
     }).catch(() => router.replace(providerLoginUrl)).finally(() => setSessionLoading(false));
   }, [router]);
+
+  useEffect(() => {
+    setSidebarCollapsed(window.localStorage.getItem('takein-provider-sidebar') === 'collapsed');
+  }, []);
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((value) => {
+      const next = !value;
+      window.localStorage.setItem('takein-provider-sidebar', next ? 'collapsed' : 'expanded');
+      return next;
+    });
+  }, []);
 
   const load = useCallback(async () => {
     if (!user || !canAccessItem(user, itemForSection(selected))) {
@@ -71,7 +84,7 @@ export default function ProviderDashboard({ section = 'overview' }) {
       services: '/api/provider/services',
     };
     const endpoints = {
-      overview: { branches: common.branches, bookings: '/api/provider/bookings', payments: '/api/provider/payments', chat: '/api/chat/threads', notifications: '/api/notifications' },
+      overview: { branches: common.branches, bookings: '/api/provider/bookings', payments: '/api/provider/payments', services: common.services, staff: common.staff, chat: '/api/chat/threads', notifications: '/api/notifications' },
       bookings: { bookings: '/api/provider/bookings', branches: common.branches },
       calendar: { calendar: `/api/provider/bookings/calendar?from=${range.from}&to=${range.to}` },
       queue: { queue: `/api/provider/bookings/queue?date=${today()}` },
@@ -156,10 +169,20 @@ export default function ProviderDashboard({ section = 'overview' }) {
       : <MenuRouter selected={selected} data={data} user={user} navigate={navigate} reload={load} bookingAction={bookingAction} actionBusy={actionBusy} setError={setError} />;
 
   return (
-    <div className="min-h-screen bg-muted/20">
-      <Topbar user={user} visibleItems={visibleItems} activeGroup={activeGroup} selected={selected} signOut={signOut} loading={loading} reload={load} />
-      <Sidebar selected={selected} user={user} signOut={signOut} activeGroup={activeGroup} visibleItems={visibleItems} />
-      <ContentArea selected={selected}>{content}</ContentArea>
+    <div className="provider-console-surface min-h-screen bg-background">
+      <Topbar
+        user={user}
+        visibleItems={visibleItems}
+        activeGroup={activeGroup}
+        selected={selected}
+        signOut={signOut}
+        loading={loading}
+        reload={load}
+        sidebarCollapsed={sidebarCollapsed}
+        onToggleSidebar={toggleSidebar}
+      />
+      <Sidebar selected={selected} user={user} signOut={signOut} activeGroup={activeGroup} visibleItems={visibleItems} collapsed={sidebarCollapsed} />
+      <ContentArea selected={selected} sidebarCollapsed={sidebarCollapsed}>{content}</ContentArea>
 
       <AlertDialog open={Boolean(pendingBookingAction)} onOpenChange={(open) => { if (!open && !actionBusy) setPendingBookingAction(null); }}>
         <AlertDialogContent>

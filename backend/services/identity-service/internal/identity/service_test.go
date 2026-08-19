@@ -134,12 +134,25 @@ func (r *memoryRepository) CreateSession(_ context.Context, session Session, _ S
 	return nil
 }
 
-func (r *memoryRepository) RotateSession(_ context.Context, oldHash []byte, replacement Session, _ SessionMetadata) (User, Session, error) {
+func (r *memoryRepository) RotateSession(_ context.Context, oldHash []byte, expectedRole string, replacement Session, _ SessionMetadata) (User, Session, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	old, ok := r.sessions[string(oldHash)]
 	if !ok || old.UsedAt != nil || old.RevokedAt != nil {
 		return User{}, Session{}, ErrRefreshReplay
+	}
+	var sessionUser User
+	for _, user := range r.users {
+		if user.ID == old.UserID {
+			sessionUser = user
+			break
+		}
+	}
+	if sessionUser.ID == 0 {
+		return User{}, Session{}, ErrNotFound
+	}
+	if sessionUser.Role != expectedRole {
+		return User{}, Session{}, ErrNotFound
 	}
 	used := time.Now()
 	old.UsedAt = &used
@@ -147,12 +160,7 @@ func (r *memoryRepository) RotateSession(_ context.Context, oldHash []byte, repl
 	replacement.UserID = old.UserID
 	replacement.FamilyID = old.FamilyID
 	r.sessions[string(replacement.TokenHash)] = replacement
-	for _, user := range r.users {
-		if user.ID == old.UserID {
-			return user, replacement, nil
-		}
-	}
-	return User{}, Session{}, ErrNotFound
+	return sessionUser, replacement, nil
 }
 
 func (r *memoryRepository) RevokeSession(_ context.Context, hash []byte) error {
@@ -184,21 +192,21 @@ func TestRegisterLoginRefreshRotationAndLogout(t *testing.T) {
 	if user.Email != "ada@example.com" || user.Name != "Ada" {
 		t.Fatalf("registration normalization failed: %#v", user)
 	}
-	_, pair, err := service.Login(context.Background(), "ADA@example.com", "password123", SessionMetadata{})
+	_, pair, err := service.Login(context.Background(), "ADA@example.com", "password123", "customer", SessionMetadata{})
 	if err != nil || pair.AccessToken == "" || pair.RefreshToken == "" {
 		t.Fatalf("login failed: %v", err)
 	}
-	_, rotated, err := service.Refresh(context.Background(), pair.RefreshToken, SessionMetadata{})
+	_, rotated, err := service.Refresh(context.Background(), pair.RefreshToken, "customer", SessionMetadata{})
 	if err != nil || rotated.RefreshToken == pair.RefreshToken {
 		t.Fatalf("rotation failed: %v", err)
 	}
-	if _, _, err := service.Refresh(context.Background(), pair.RefreshToken, SessionMetadata{}); !errors.Is(err, ErrRefreshReplay) {
+	if _, _, err := service.Refresh(context.Background(), pair.RefreshToken, "customer", SessionMetadata{}); !errors.Is(err, ErrRefreshReplay) {
 		t.Fatalf("refresh replay was not rejected: %v", err)
 	}
 	if err := service.Logout(context.Background(), rotated.RefreshToken); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := service.Refresh(context.Background(), rotated.RefreshToken, SessionMetadata{}); !errors.Is(err, ErrRefreshReplay) {
+	if _, _, err := service.Refresh(context.Background(), rotated.RefreshToken, "customer", SessionMetadata{}); !errors.Is(err, ErrRefreshReplay) {
 		t.Fatalf("revoked refresh token was accepted: %v", err)
 	}
 }
@@ -211,7 +219,35 @@ func TestLoginRejectsWrongPassword(t *testing.T) {
 	issuer, _ := security.NewTokenIssuer("", "issuer", "audience", "test", time.Minute, time.Hour, true)
 	service := NewService(repository, hasher, issuer)
 	_, _ = service.Register(context.Background(), Registration{Name: "Ada", Email: "ada@example.com", Password: "password123", Role: "customer"}, "")
-	if _, _, err := service.Login(context.Background(), "ada@example.com", "wrong", SessionMetadata{}); !errors.Is(err, ErrInvalidCredentials) {
+	if _, _, err := service.Login(context.Background(), "ada@example.com", "wrong", "customer", SessionMetadata{}); !errors.Is(err, ErrInvalidCredentials) {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestLoginAndRefreshRejectWrongPortalRoleWithoutConsumingSession(t *testing.T) {
+	repository := newMemoryRepository()
+	hasher := security.NewPasswordHasher()
+	hasher.Memory = 8 * 1024
+	hasher.Iterations = 1
+	issuer, _ := security.NewTokenIssuer("", "issuer", "audience", "test", time.Minute, time.Hour, true)
+	service := NewService(repository, hasher, issuer)
+	_, _ = service.Register(context.Background(), Registration{Name: "Provider", Email: "provider@example.com", Password: "password123", Role: "provider"}, "")
+
+	if _, _, err := service.Login(context.Background(), "provider@example.com", "password123", "customer", SessionMetadata{}); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("provider login was accepted by customer portal: %v", err)
+	}
+	if len(repository.sessions) != 0 {
+		t.Fatalf("role-mismatched login created %d refresh sessions", len(repository.sessions))
+	}
+
+	_, pair, err := service.Login(context.Background(), "provider@example.com", "password123", "provider", SessionMetadata{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := service.Refresh(context.Background(), pair.RefreshToken, "customer", SessionMetadata{}); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("provider refresh token was accepted by customer portal: %v", err)
+	}
+	if _, _, err := service.Refresh(context.Background(), pair.RefreshToken, "provider", SessionMetadata{}); err != nil {
+		t.Fatalf("wrong-role refresh consumed the provider session: %v", err)
 	}
 }

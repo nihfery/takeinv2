@@ -30,7 +30,7 @@ export default function NotificationsMenu({ data, reload }) {
   }
 
   return (
-    <Card className="overflow-hidden py-0 shadow-none">
+    <Card className="overflow-hidden py-0">
       <CardHeader className="border-b py-5"><div><div className="flex items-center gap-2"><CardTitle>Notification center</CardTitle><Badge variant="secondary" className="rounded-full">{unread} unread</Badge></div><CardDescription className="mt-1">Operational updates from connected TAKEIN services.</CardDescription></div>{unread ? <Button size="sm" variant="outline" onClick={() => mutate('all', '/api/notifications/read-all', 'POST')} disabled={Boolean(busy)}>{busy === 'all' ? <LoaderCircle className="animate-spin" /> : <CheckCheck />}Mark all read</Button> : null}</CardHeader>
       <CardContent className="px-0">
         {error ? <Alert variant="destructive" className="m-4"><AlertDescription>{error}</AlertDescription></Alert> : null}

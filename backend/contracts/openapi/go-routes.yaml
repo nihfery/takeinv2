@@ -62,6 +62,12 @@ routes:
       method: GET
       path: /api/provider/bookings/queue
     - service: booking-service
+      method: GET
+      path: /api/provider/bookings/{booking}
+    - service: booking-service
+      method: PATCH
+      path: /api/provider/bookings/{booking}
+    - service: booking-service
       method: POST
       path: /api/provider/bookings/walk-in
     - service: booking-service
@@ -263,6 +269,15 @@ routes:
       method: GET
       path: /api/auth/me
     - service: identity-service
+      method: GET
+      path: /api/auth/customer/me
+    - service: identity-service
+      method: GET
+      path: /api/auth/provider/me
+    - service: identity-service
+      method: GET
+      path: /api/auth/admin/me
+    - service: identity-service
       method: POST
       path: /api/auth/register/customer
     - service: identity-service
@@ -304,6 +319,12 @@ routes:
     - service: provider-service
       method: PATCH
       path: /api/admin/providers/{provider}/toggle-status
+    - service: provider-service
+      method: GET
+      path: /api/provider/branch-profile
+    - service: provider-service
+      method: PUT
+      path: /api/provider/branch-profile
     - service: provider-service
       method: GET
       path: /api/provider/branches

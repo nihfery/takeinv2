@@ -170,7 +170,7 @@ func (r *Repository) CreateSession(ctx context.Context, session identity.Session
 	return err
 }
 
-func (r *Repository) RotateSession(ctx context.Context, oldHash []byte, replacement identity.Session, metadata identity.SessionMetadata) (identity.User, identity.Session, error) {
+func (r *Repository) RotateSession(ctx context.Context, oldHash []byte, expectedRole string, replacement identity.Session, metadata identity.SessionMetadata) (identity.User, identity.Session, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return identity.User{}, identity.Session{}, err
@@ -179,7 +179,7 @@ func (r *Repository) RotateSession(ctx context.Context, oldHash []byte, replacem
 	var old identity.Session
 	row := tx.QueryRow(ctx, `SELECT s.id,s.user_id,s.family_id,s.token_hash,s.expires_at,s.used_at,s.revoked_at,
 		u.id,u.name,u.username,u.email,u.email_verified_at,u.password_hash,u.role,u.status,u.provider_id,u.branch_id,u.provider_role_id,u.permissions,u.created_at,u.updated_at
-		FROM refresh_sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 FOR UPDATE OF s`, oldHash)
+		FROM refresh_sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 AND u.role=$2 FOR UPDATE OF s`, oldHash, expectedRole)
 	var user identity.User
 	err = row.Scan(&old.ID, &old.UserID, &old.FamilyID, &old.TokenHash, &old.ExpiresAt, &old.UsedAt, &old.RevokedAt,
 		&user.ID, &user.Name, &user.Username, &user.Email, &user.EmailVerified, &user.PasswordHash, &user.Role, &user.Status,

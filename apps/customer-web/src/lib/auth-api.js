@@ -67,6 +67,9 @@ export function clearAuthToken() {
 }
 
 function normalizeCustomerProfile(user) {
+    if (user?.role !== 'customer') {
+        throw new Error('Akun ini bukan akun customer. Silakan gunakan portal provider atau admin yang sesuai.');
+    }
     const profile = user?.customer_profile || user?.customerProfile || {};
     const address = profile?.address
         || profile?.address_line_1
@@ -307,7 +310,7 @@ export async function registerCustomer({
 }
 
 export async function fetchCurrentCustomer() {
-    const response = await fetch(`${API_BASE}/auth/me`, {
+    const response = await fetch(`${API_BASE}/auth/customer/me`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -317,7 +320,7 @@ export async function fetchCurrentCustomer() {
     });
     const payload = await parseJson(response);
 
-    if (!response.ok || !payload?.user) {
+    if (!response.ok || !payload?.user || payload.user.role !== 'customer') {
         throw new Error(payload?.message || 'Session tidak aktif.');
     }
 

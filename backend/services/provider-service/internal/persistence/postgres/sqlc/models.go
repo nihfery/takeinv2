@@ -57,6 +57,10 @@ type ProviderBranch struct {
 	Status           string             `json:"status"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	Description      string             `json:"description"`
+	BranchType       string             `json:"branch_type"`
+	Timezone         string             `json:"timezone"`
+	OpenedAt         pgtype.Date        `json:"opened_at"`
 }
 
 type ProviderProfile struct {
@@ -95,6 +99,8 @@ type ProviderRole struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	IdentityUserID pgtype.Int8        `json:"identity_user_id"`
+	AccountName    pgtype.Text        `json:"account_name"`
+	AccountEmail   pgtype.Text        `json:"account_email"`
 }
 
 type ProviderRoleMenuPermission struct {

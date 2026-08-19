@@ -50,11 +50,11 @@ export default function ChatMenu({ data }) {
     }
   }
 
-  if (!threads.length) return <Card className="shadow-none"><Empty title="No conversations yet" description="Customer conversations will appear after a booking thread is created." /></Card>;
+  if (!threads.length) return <Card><Empty title="No conversations yet" description="Customer conversations will appear after a booking thread is created." /></Card>;
   const activeThread = threads.find((item) => String(item.id) === String(activeID));
 
   return (
-    <div className="grid min-h-[620px] overflow-hidden rounded-xl border bg-card shadow-none lg:grid-cols-[320px_minmax(0,1fr)]">
+    <div className="grid min-h-[620px] overflow-hidden rounded-xl border bg-card shadow-xs lg:grid-cols-[320px_minmax(0,1fr)]">
       <aside className="border-b lg:border-b-0 lg:border-r">
         <div className="border-b p-4"><h2 className="font-semibold">Conversations</h2><p className="mt-1 text-xs text-muted-foreground">{threads.length} active threads</p></div>
         <div className="max-h-64 overflow-y-auto p-2 lg:max-h-[550px]">{threads.map((thread) => {

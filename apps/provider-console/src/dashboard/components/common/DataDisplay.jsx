@@ -14,14 +14,14 @@ const negative = new Set(['inactive', 'rejected', 'cancelled', 'provider_cancell
 
 export function Metric({ label, value, detail, tone = 'mint', icon: Icon = TrendingUp }) {
   const tones = {
-    mint: 'bg-emerald-100 text-emerald-700',
-    blue: 'bg-sky-100 text-sky-700',
-    peach: 'bg-amber-100 text-amber-700',
-    violet: 'bg-violet-100 text-violet-700',
+    mint: 'bg-muted text-muted-foreground',
+    blue: 'bg-muted text-muted-foreground',
+    peach: 'bg-muted text-muted-foreground',
+    violet: 'bg-muted text-muted-foreground',
   };
   return (
-    <Card className="gap-4 py-5 shadow-none">
-      <CardHeader className="px-5"><CardDescription>{label}</CardDescription><span className={cn('grid size-9 place-items-center rounded-lg', tones[tone] || tones.mint)}><Icon className="size-4" /></span></CardHeader>
+    <Card className="gap-4 bg-linear-to-t from-primary/[0.035] to-card py-5">
+      <CardHeader className="px-5"><CardDescription>{label}</CardDescription><span className={cn('grid size-9 place-items-center rounded-lg border', tones[tone] || tones.mint)}><Icon className="size-4" /></span></CardHeader>
       <CardContent className="px-5"><div className="text-3xl font-semibold tracking-tight">{value}</div><p className="mt-1 text-xs text-muted-foreground">{detail}</p></CardContent>
     </Card>
   );
@@ -59,7 +59,7 @@ export function ErrorNotice({ message, retry }) {
 
 function TableCard({ title = 'Records', description = 'Data returned by the connected Go service.', children, count }) {
   return (
-    <Card className="overflow-hidden py-0 shadow-none">
+    <Card className="overflow-hidden py-0">
       <CardHeader className="border-b py-5"><div><div className="flex items-center gap-2"><CardTitle>{title}</CardTitle>{Number.isFinite(count) ? <Badge variant="secondary" className="rounded-full">{count}</Badge> : null}</div><CardDescription className="mt-1">{description}</CardDescription></div></CardHeader>
       <CardContent className="px-0">{children}</CardContent>
     </Card>

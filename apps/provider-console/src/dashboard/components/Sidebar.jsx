@@ -2,11 +2,13 @@
 
 import {
   Building2,
+  CheckCircle2,
   ChevronsUpDown,
   CircleHelp,
   LogOut,
-  Settings2,
-  Sparkles,
+  Mail,
+  PlusCircle,
+  ServerCog,
   Store,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -23,137 +25,175 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { accountScope, navigationForGroup, navGroups, navItems } from '../config/navigation';
+import { accountScope, navigationForGroup, navGroups } from '../config/navigation';
+import Brand from './Brand';
 import ProviderNavLink from './ProviderNavLink';
 
 function initials(value) {
   return String(value || 'P').trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
 }
 
-function firstVisible(group, visibleItems) {
-  return group.keys.find((key) => visibleItems.some((item) => item.key === key));
-}
-
-function GroupRail({ activeGroup, visibleItems }) {
-  const profileVisible = visibleItems.some((item) => item.key === 'profile');
+function SidebarAction({ compact, item, label, icon: Icon, onNavigate, variant = 'default' }) {
+  if (!item) return null;
   return (
-    <div className="flex w-14 shrink-0 flex-col items-center border-r bg-muted/25 py-3">
-      <ProviderNavLink section="overview" className="mb-5 grid size-8 place-items-center rounded-lg bg-foreground text-xs font-black text-background shadow-sm" aria-label="TAKEIN Provider home">
-        T
-      </ProviderNavLink>
-      <nav className="grid gap-2" aria-label="Provider workspace groups">
-        {navGroups.filter((group) => firstVisible(group, visibleItems)).map((group) => {
-          const target = firstVisible(group, visibleItems);
-          const Icon = navItems.find((item) => item.key === target)?.icon || Sparkles;
-          const active = activeGroup.key === group.key;
-          return (
-            <Tooltip key={group.key}>
-              <TooltipTrigger render={<Button variant={active ? 'default' : 'ghost'} size="icon-sm" render={<ProviderNavLink section={target} aria-label={group.label} />} />}>
-                <Icon />
-              </TooltipTrigger>
-              <TooltipContent side="right">{group.label}</TooltipContent>
-            </Tooltip>
-          );
-        })}
-      </nav>
-      <div className="mt-auto grid gap-2">
-        {profileVisible ? <Tooltip>
-          <TooltipTrigger render={<Button variant="ghost" size="icon-sm" render={<ProviderNavLink section="profile" aria-label="Settings" />} />}><Settings2 /></TooltipTrigger>
-          <TooltipContent side="right">Settings</TooltipContent>
-        </Tooltip> : null}
-        <Tooltip>
-          <TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Help" />}><CircleHelp /></TooltipTrigger>
-          <TooltipContent side="right">Provider help</TooltipContent>
-        </Tooltip>
-      </div>
-    </div>
+    <Tooltip>
+      <TooltipTrigger render={(
+        <ProviderNavLink
+          section={item.key}
+          onClick={onNavigate}
+          className={cn(
+            'inline-flex h-8 items-center justify-center gap-2 rounded-lg px-2.5 text-sm font-medium transition-colors',
+            variant === 'default' ? 'bg-primary text-primary-foreground hover:bg-primary/85' : 'border bg-background hover:bg-muted',
+            compact && 'size-8 px-0',
+          )}
+        />
+      )}>
+        <Icon className="size-4" />
+        {!compact ? <span>{label}</span> : null}
+      </TooltipTrigger>
+      {compact ? <TooltipContent side="right">{label}</TooltipContent> : null}
+    </Tooltip>
   );
 }
 
-export function SidebarContent({ selected, user, signOut, activeGroup, visibleItems, mobile = false, onNavigate }) {
-  const businessName = user?.business_name || user?.provider_name || user?.name || 'TAKEIN Studio';
+function UserMenu({ compact, user, scope, signOut }) {
+  const ScopeIcon = scope.type === 'branch' ? Store : Building2;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={(
+        <Button
+          variant="ghost"
+          className={cn('h-auto w-full justify-start gap-2 rounded-lg p-1.5 text-left', compact && 'size-9 justify-center p-0')}
+          aria-label="Open provider account menu"
+        />
+      )}>
+        <Avatar className="size-7 rounded-md">
+          <AvatarFallback className="rounded-md bg-primary text-[9px] text-primary-foreground">{initials(user?.name || user?.email)}</AvatarFallback>
+        </Avatar>
+        {!compact ? (
+          <>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs font-medium">{user?.name || 'Provider'}</span>
+              <span className="block truncate text-[10px] font-normal text-muted-foreground">{user?.email}</span>
+            </span>
+            <ChevronsUpDown className="size-3.5 text-muted-foreground" />
+          </>
+        ) : null}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side={compact ? 'right' : 'top'} align="end" className="w-64">
+        <DropdownMenuLabel className="p-2 font-normal">
+          <span className="flex items-center gap-2.5">
+            <Avatar className="size-9 rounded-lg"><AvatarFallback className="rounded-lg bg-primary text-xs text-primary-foreground">{initials(user?.name || user?.email)}</AvatarFallback></Avatar>
+            <span className="min-w-0"><strong className="block truncate text-sm">{user?.name || 'Provider'}</strong><span className="block truncate text-xs text-muted-foreground">{user?.email}</span></span>
+          </span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem disabled><ScopeIcon />{scope.label}<Badge variant="secondary" className="ml-auto text-[9px]">{scope.type.toUpperCase()}</Badge></DropdownMenuItem>
+        <DropdownMenuItem disabled><CheckCircle2 className="text-emerald-600" />Go services connected</DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" onClick={signOut}><LogOut />Sign out</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export function SidebarContent({ selected, user, signOut, visibleItems, mobile = false, collapsed = false, onNavigate }) {
+  const compact = collapsed && !mobile;
   const scope = accountScope(user);
   const WorkspaceIcon = scope.type === 'branch' ? Store : Building2;
-  const currentGroup = activeGroup || navGroups[0];
-  const groupItems = navigationForGroup(visibleItems, currentGroup);
-  const availableGroups = navGroups.filter((group) => firstVisible(group, visibleItems));
+  const availableGroups = navGroups
+    .map((group) => ({ ...group, items: navigationForGroup(visibleItems, group) }))
+    .filter((group) => group.items.length);
+  const quickBooking = visibleItems.find((item) => item.key === 'walk-in') || visibleItems.find((item) => item.key === 'bookings');
+  const inbox = visibleItems.find((item) => item.key === 'chat');
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-sidebar text-sidebar-foreground">
-      <div className="flex h-14 shrink-0 items-center border-b px-3">
+      <div className={cn('flex h-12 shrink-0 items-center border-b px-3', compact && 'justify-center px-2')}>
+        <Brand compact={compact} />
+      </div>
+
+      <div className={cn('shrink-0 border-b p-2.5', compact && 'px-2')}>
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" className="h-9 w-full justify-start gap-2 px-2" aria-label="Switch provider workspace" />}>
-            <span className="grid size-6 shrink-0 place-items-center rounded-md border bg-background"><WorkspaceIcon className="size-3.5" /></span>
-            <span className="min-w-0 flex-1 text-left"><span className="block truncate text-xs font-medium">{businessName}</span><span className="block truncate text-[9px] text-muted-foreground">{scope.label}</span></span>
-            <ChevronsUpDown className="size-3.5 text-muted-foreground" />
+          <DropdownMenuTrigger render={(
+            <Button variant="ghost" className={cn('h-10 w-full justify-start gap-2 px-2', compact && 'justify-center px-0')} aria-label="Provider workspace" />
+          )}>
+            <span className="grid size-7 shrink-0 place-items-center rounded-md border bg-background"><WorkspaceIcon className="size-3.5" /></span>
+            {!compact ? <><span className="min-w-0 flex-1 text-left"><span className="block truncate text-xs font-medium">{user?.business_name || user?.provider_name || 'TAKEIN Studio'}</span><span className="block truncate text-[10px] text-muted-foreground">{scope.label}</span></span><ChevronsUpDown className="size-3.5 text-muted-foreground" /></> : null}
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-60">
-            <DropdownMenuLabel><span className="block">Provider workspace</span><span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">{scope.description}</span></DropdownMenuLabel>
-            <DropdownMenuItem><WorkspaceIcon />{scope.label}<Badge variant={scope.type === 'central' ? 'default' : 'secondary'} className="ml-auto text-[8px]">{scope.type === 'central' ? 'CENTRAL' : 'BRANCH'}</Badge></DropdownMenuItem>
+          <DropdownMenuContent side={compact ? 'right' : 'bottom'} align="start" className="w-64">
+            <DropdownMenuLabel>Current workspace</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem><Sparkles />Go services connected</DropdownMenuItem>
+            <DropdownMenuItem disabled><WorkspaceIcon />{scope.label}<Badge variant="secondary" className="ml-auto text-[9px]">{scope.type.toUpperCase()}</Badge></DropdownMenuItem>
+            <DropdownMenuItem disabled><ServerCog />Go microservices</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
-        {mobile ? <div className="mb-4 flex flex-wrap gap-1.5 border-b pb-4">{availableGroups.map((group) => {
-          const target = firstVisible(group, visibleItems);
-          return <Button key={group.key} size="xs" variant={currentGroup.key === group.key ? 'default' : 'outline'} render={<ProviderNavLink section={target} onClick={onNavigate} />}>{group.label}</Button>;
-        })}</div> : null}
+      <div className={cn('grid shrink-0 gap-1 border-b p-2.5', !compact && 'grid-cols-[1fr_auto]', compact && 'px-2')}>
+        <SidebarAction compact={compact} item={quickBooking} label="Quick booking" icon={PlusCircle} onNavigate={onNavigate} />
+        <SidebarAction compact={compact} item={inbox} label="Inbox" icon={Mail} onNavigate={onNavigate} variant="outline" />
+      </div>
 
-        <div>
-          <div className="mb-2 flex items-center justify-between px-2">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{currentGroup.label}</p>
-            <Badge variant="secondary" className="h-4 rounded px-1.5 text-[8px]">{groupItems.length}</Badge>
+      <div className={cn('min-h-0 flex-1 overflow-y-auto px-2 py-3', compact && 'px-2')}>
+        <nav className="grid gap-3" aria-label="Provider navigation">
+          {availableGroups.map((group) => (
+            <section key={group.key} aria-label={`${group.label} menu`}>
+              {!compact ? <p className="mb-1 px-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{group.label}</p> : <Separator className="my-1" />}
+              <div className="grid gap-0.5">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const active = selected === item.key;
+                  return (
+                    <Tooltip key={item.key}>
+                      <TooltipTrigger render={(
+                        <ProviderNavLink
+                          section={item.key}
+                          onClick={onNavigate}
+                          aria-current={active ? 'page' : undefined}
+                          className={cn(
+                            'group flex h-8 items-center gap-2 rounded-md px-2 text-[13px] font-medium transition-colors',
+                            compact && 'mx-auto size-8 justify-center px-0',
+                            active ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                          )}
+                        />
+                      )}>
+                        <Icon className="size-4 shrink-0" />
+                        {!compact ? <span className="truncate">{item.label}</span> : null}
+                        {!compact && item.key === 'queue' ? <span className="ml-auto size-1.5 rounded-full bg-emerald-500" /> : null}
+                      </TooltipTrigger>
+                      {compact ? <TooltipContent side="right">{item.label}</TooltipContent> : null}
+                    </Tooltip>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </nav>
+      </div>
+
+      <div className={cn('shrink-0 border-t p-2.5', compact && 'px-2')}>
+        {!compact ? (
+          <div className="mb-2 rounded-lg border bg-card p-3 shadow-xs">
+            <div className="flex items-start gap-2.5">
+              <span className="grid size-8 shrink-0 place-items-center rounded-md bg-muted"><ServerCog className="size-4" /></span>
+              <div className="min-w-0"><p className="text-xs font-medium">Provider services</p><p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">Identity, booking, catalog, and payment services are connected.</p></div>
+            </div>
+            <div className="mt-2 flex items-center gap-2 border-t pt-2 text-[10px] text-muted-foreground"><span className="size-1.5 rounded-full bg-emerald-500" />Operational</div>
           </div>
-          <nav className="grid gap-0.5" aria-label={`${currentGroup.label} menu`}>
-            {groupItems.map((item) => {
-              const Icon = item.icon;
-              const active = selected === item.key;
-              return (
-                <ProviderNavLink
-                  key={item.key}
-                  section={item.key}
-                  onClick={onNavigate}
-                  aria-current={active ? 'page' : undefined}
-                  className={cn(
-                    'group flex h-8 items-center gap-2.5 rounded-md px-2 text-xs font-medium transition-colors',
-                    active ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-[inset_0_0_0_1px_var(--sidebar-border)]' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/65 hover:text-sidebar-accent-foreground',
-                  )}
-                >
-                  <Icon className="size-3.5" />
-                  <span className="truncate">{item.label}</span>
-                  {item.key === 'queue' ? <Badge variant="outline" className="ml-auto h-4 rounded px-1 text-[8px]">LIVE</Badge> : null}
-                </ProviderNavLink>
-              );
-            })}
-          </nav>
-        </div>
+        ) : null}
+        {!compact ? <Button variant="ghost" className="mb-1 h-8 w-full justify-start gap-2 px-2 text-xs text-muted-foreground"><CircleHelp className="size-4" />Help & support</Button> : null}
+        <UserMenu compact={compact} user={user} scope={scope} signOut={signOut} />
       </div>
-
-      <div className="shrink-0 border-t p-3">
-        <div className="mb-3 flex items-center gap-2 rounded-md bg-muted/45 px-2.5 py-2 text-[10px] text-muted-foreground">
-          <span className="size-1.5 rounded-full bg-emerald-500" />
-          <span>{scope.type === 'central' ? 'All branches · Go services online' : `${scope.label} · ${visibleItems.length} menus`}</span>
-        </div>
-        <Separator className="mb-3" />
-        <div className="flex items-center gap-2">
-          <Avatar className="size-7"><AvatarFallback className="bg-foreground text-[9px] text-background">{initials(user?.name || user?.email)}</AvatarFallback></Avatar>
-          <div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{user?.name || 'Provider'}</p><p className="truncate text-[10px] text-muted-foreground">{user?.email}</p></div>
-          <Button variant="ghost" size="icon-xs" onClick={signOut} aria-label="Sign out"><LogOut /></Button>
-        </div>
-      </div>
-      {mobile ? <div className="h-3" /> : null}
+      {mobile ? <div className="h-2" /> : null}
     </div>
   );
 }
 
-export default function Sidebar(props) {
+export default function Sidebar({ collapsed = false, ...props }) {
   return (
-    <aside className="fixed inset-y-0 left-0 z-50 hidden w-72 border-r bg-sidebar lg:flex">
-      <GroupRail activeGroup={props.activeGroup} visibleItems={props.visibleItems} />
-      <div className="min-w-0 flex-1"><SidebarContent {...props} /></div>
+    <aside className={cn('fixed inset-y-0 left-0 z-50 hidden border-r bg-sidebar transition-[width] duration-200 lg:block', collapsed ? 'w-16' : 'w-68')}>
+      <SidebarContent {...props} collapsed={collapsed} />
     </aside>
   );
 }

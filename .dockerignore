@@ -5,11 +5,13 @@ node_modules
 apps/provider-landing/node_modules
 apps/customer-web/node_modules
 apps/provider-console/node_modules
+apps/provider-web/node_modules
 apps/admin-web/node_modules
 
 apps/provider-landing/.next
 apps/customer-web/.next
 apps/provider-console/.next
+apps/provider-web/.next
 apps/admin-web/.next
 
 # Runtime configuration and secrets must be injected by the orchestrator,

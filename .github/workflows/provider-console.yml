@@ -6,6 +6,8 @@ on:
   pull_request:
     paths:
       - "apps/provider-console/**"
+      - "apps/provider-web/**"
+      - "platform/docker/Dockerfile.provider-web"
       - ".github/workflows/provider-console.yml"
   workflow_dispatch:
 
@@ -20,9 +22,15 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - apps/provider-console
+          - apps/provider-web
     defaults:
       run:
-        working-directory: apps/provider-console
+        working-directory: ${{ matrix.app }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -34,12 +42,12 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: apps/provider-console/package-lock.json
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
 
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Build provider console
+      - name: Build provider application
         env:
           GO_API_BASE_URL: https://api.example.invalid
           GO_IDENTITY_URL: https://identity.example.invalid

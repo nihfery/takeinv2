@@ -21,7 +21,7 @@ http:
       priority: 220
       service: takein-customer
     takein-provider:
-      rule: "Path(`/api/provider/profile`) || PathPrefix(`/api/provider/profile/documents`) || PathPrefix(`/api/provider/staff`) || PathPrefix(`/api/provider/branches`) || PathPrefix(`/api/provider/roles-permissions`) || PathPrefix(`/api/admin/providers`)"
+      rule: "Path(`/api/provider/branch-profile`) || Path(`/api/provider/profile`) || PathPrefix(`/api/provider/profile/documents`) || PathPrefix(`/api/provider/staff`) || PathPrefix(`/api/provider/branches`) || PathPrefix(`/api/provider/roles-permissions`) || PathPrefix(`/api/admin/providers`)"
       priority: 200
       service: takein-provider
     takein-catalog:

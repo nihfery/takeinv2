@@ -48,6 +48,10 @@ type Branch struct {
 	ID               int64     `json:"id"`
 	ProviderID       int64     `json:"provider_id"`
 	Name             string    `json:"branch_name"`
+	Description      string    `json:"description"`
+	BranchType       string    `json:"branch_type"`
+	Timezone         string    `json:"timezone"`
+	OpenedAt         *string   `json:"opened_at"`
 	Email            *string   `json:"email"`
 	PhoneCode        string    `json:"phone_code"`
 	PhoneNumber      *string   `json:"phone_number"`
@@ -128,8 +132,42 @@ type BillingClient interface {
 	Get(context.Context, int64) (Entitlement, error)
 }
 type Identity struct {
-	UserID, Name, Username, Email, Status string
-	Permissions                           []string
+	UserID      string   `json:"user_id"`
+	Name        string   `json:"name"`
+	Username    string   `json:"username"`
+	Email       string   `json:"email"`
+	Status      string   `json:"status"`
+	Permissions []string `json:"permissions"`
+}
+
+type BranchProfileProvider struct {
+	ID             int64     `json:"id"`
+	DisplayName    string    `json:"display_name"`
+	Category       *string   `json:"category"`
+	Status         string    `json:"status"`
+	DocumentStatus string    `json:"document_status"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+type BranchProfileDocument struct {
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	Category     string    `json:"category"`
+	Status       string    `json:"status"`
+	Available    bool      `json:"available"`
+	IsRestricted bool      `json:"is_restricted"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+
+type BranchProfile struct {
+	Branch               Branch                  `json:"branch"`
+	Provider             BranchProfileProvider   `json:"provider"`
+	Account              Identity                `json:"account"`
+	Owner                Identity                `json:"owner"`
+	RoleName             string                  `json:"role_name"`
+	CompletionPercentage int                     `json:"completion_percentage"`
+	Documents            []BranchProfileDocument `json:"documents"`
 }
 type IdentityClient interface {
 	Get(context.Context, int64) (Identity, error)
@@ -228,6 +266,10 @@ func (input ProfileInput) Validate() error {
 
 type BranchInput struct {
 	Name             string   `json:"branch_name" form:"branch_name"`
+	Description      string   `json:"description" form:"description"`
+	BranchType       string   `json:"branch_type" form:"branch_type"`
+	Timezone         string   `json:"timezone" form:"timezone"`
+	OpenedAt         string   `json:"opened_at" form:"opened_at"`
 	Email            string   `json:"email" form:"email"`
 	PhoneCode        string   `json:"phone_code" form:"phone_code"`
 	PhoneNumber      string   `json:"phone_number" form:"phone_number"`
@@ -245,6 +287,29 @@ type BranchInput struct {
 	ImageObjectID    *string  `json:"image_object_id" form:"image_object_id"`
 	ImageObjectIDs   []string `json:"image_object_ids" form:"image_object_ids"`
 	Status           string   `json:"status" form:"status"`
+}
+
+// BranchProfileUpdateInput intentionally excludes ownership, status, media,
+// and coordinates. A branch account may maintain its public profile and
+// operating details, but it cannot widen its own scope or lifecycle access.
+type BranchProfileUpdateInput struct {
+	Name             string   `json:"branch_name"`
+	Description      string   `json:"description"`
+	BranchType       string   `json:"branch_type"`
+	Timezone         string   `json:"timezone"`
+	OpenedAt         string   `json:"opened_at"`
+	Email            string   `json:"email"`
+	PhoneCode        string   `json:"phone_code"`
+	PhoneNumber      string   `json:"phone_number"`
+	Address          string   `json:"address"`
+	CountryID        string   `json:"country_id"`
+	StateID          string   `json:"state_id"`
+	CityID           string   `json:"city_id"`
+	ZipCode          string   `json:"zip_code"`
+	WorkingStartHour string   `json:"working_start_hour"`
+	WorkingEndHour   string   `json:"working_end_hour"`
+	WorkingDays      []string `json:"working_days"`
+	Holidays         []string `json:"holidays"`
 }
 type StaffInput struct {
 	BranchID      *int64  `json:"branch_id" form:"branch_id"`
@@ -286,6 +351,22 @@ func (input BranchInput) Validate() error {
 	if input.Status != "" && input.Status != "active" && input.Status != "inactive" {
 		return ErrValidation
 	}
+	if len(input.Description) > 2000 || input.BranchType != "" && input.BranchType != "physical" && input.BranchType != "hybrid" && input.BranchType != "mobile" {
+		return ErrValidation
+	}
+	if input.Timezone != "" {
+		if len(input.Timezone) > 64 {
+			return ErrValidation
+		}
+		if _, err := time.LoadLocation(input.Timezone); err != nil {
+			return ErrValidation
+		}
+	}
+	if input.OpenedAt != "" {
+		if _, err := time.Parse("2006-01-02", input.OpenedAt); err != nil {
+			return ErrValidation
+		}
+	}
 	for _, holiday := range input.Holidays {
 		if holiday != "" {
 			if _, err := time.Parse("2006-01-02", holiday); err != nil {
@@ -294,6 +375,58 @@ func (input BranchInput) Validate() error {
 		}
 	}
 	return nil
+}
+
+func (input BranchProfileUpdateInput) branchInput() BranchInput {
+	return BranchInput{
+		Name: strings.TrimSpace(input.Name), Description: strings.TrimSpace(input.Description),
+		BranchType: strings.ToLower(strings.TrimSpace(input.BranchType)), Timezone: strings.TrimSpace(input.Timezone),
+		OpenedAt: strings.TrimSpace(input.OpenedAt), Email: strings.ToLower(strings.TrimSpace(input.Email)),
+		PhoneCode: strings.TrimSpace(input.PhoneCode), PhoneNumber: strings.TrimSpace(input.PhoneNumber),
+		Address: strings.TrimSpace(input.Address), CountryID: strings.TrimSpace(input.CountryID),
+		StateID: strings.TrimSpace(input.StateID), CityID: strings.TrimSpace(input.CityID),
+		ZipCode: strings.TrimSpace(input.ZipCode), WorkingStartHour: strings.TrimSpace(input.WorkingStartHour),
+		WorkingEndHour: strings.TrimSpace(input.WorkingEndHour), WorkingDays: normalizedProfileStrings(input.WorkingDays),
+		Holidays: normalizedProfileStrings(input.Holidays),
+	}
+}
+
+func (input BranchProfileUpdateInput) Validate() error {
+	normalized := input.branchInput()
+	if len(normalized.Name) > 255 || len(normalized.Description) > 2000 || len(normalized.Email) > 255 ||
+		len(normalized.PhoneCode) > 20 || len(normalized.PhoneNumber) > 30 || len(normalized.Address) > 2000 ||
+		len(normalized.CountryID) > 255 || len(normalized.StateID) > 255 || len(normalized.CityID) > 255 ||
+		len(normalized.ZipCode) > 20 || normalized.BranchType == "" || normalized.Timezone == "" || normalized.OpenedAt == "" ||
+		len(normalized.WorkingDays) > 7 || len(normalized.Holidays) > 366 {
+		return ErrValidation
+	}
+	if err := normalized.Validate(); err != nil {
+		return err
+	}
+	allowedDays := map[string]bool{
+		"monday": true, "tuesday": true, "wednesday": true, "thursday": true,
+		"friday": true, "saturday": true, "sunday": true,
+	}
+	for _, day := range normalized.WorkingDays {
+		if !allowedDays[day] {
+			return ErrValidation
+		}
+	}
+	return nil
+}
+
+func normalizedProfileStrings(values []string) []string {
+	result := make([]string, 0, len(values))
+	seen := make(map[string]bool, len(values))
+	for _, value := range values {
+		value = strings.ToLower(strings.TrimSpace(value))
+		if value == "" || seen[value] {
+			continue
+		}
+		seen[value] = true
+		result = append(result, value)
+	}
+	return result
 }
 
 func (input StaffInput) Validate() error {
@@ -324,12 +457,13 @@ type Repository interface {
 	UpdateDocuments(context.Context, int64, map[string]any) (Profile, error)
 	ListBranches(context.Context, int64) ([]Branch, error)
 	Branch(context.Context, int64) (Branch, error)
+	BranchRoleName(context.Context, int64, int64) (string, error)
 	CreateBranch(context.Context, int64, BranchInput) (Branch, error)
 	CreateBranchWithLimit(context.Context, int64, BranchInput, int32) (Branch, error)
 	UpdateBranch(context.Context, int64, int64, BranchInput) (Branch, error)
 	DeleteBranch(context.Context, int64, int64) error
 	AssignBranchStaff(context.Context, int64, int64, []int64) error
-	ListStaff(context.Context, int64) ([]Staff, error)
+	ListStaff(context.Context, int64, *int64) ([]Staff, error)
 	Staff(context.Context, int64) (Staff, error)
 	CreateStaff(context.Context, int64, StaffInput) (Staff, error)
 	UpdateStaff(context.Context, int64, int64, StaffInput) (Staff, error)

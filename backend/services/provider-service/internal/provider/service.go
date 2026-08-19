@@ -137,6 +137,100 @@ func (s *Service) ScopedBranch(ctx context.Context, actor Actor, id int64) (Bran
 	return branch, nil
 }
 
+func (s *Service) ResolveBranchProfile(ctx context.Context, actor Actor) (BranchProfile, error) {
+	if actor.Role != "provider" || actor.ProviderID <= 0 || actor.BranchID <= 0 || actor.UserID <= 0 || !HasPermission(actor, "profile") {
+		return BranchProfile{}, ErrForbidden
+	}
+	branch, err := s.ScopedBranch(ctx, actor, actor.BranchID)
+	if err != nil {
+		return BranchProfile{}, err
+	}
+	profile, err := s.repository.ProfileByID(ctx, actor.ProviderID)
+	if err != nil {
+		return BranchProfile{}, err
+	}
+	account, err := s.Identity(ctx, actor.UserID)
+	if err != nil {
+		return BranchProfile{}, err
+	}
+	owner, err := s.Identity(ctx, profile.UserID)
+	if err != nil {
+		return BranchProfile{}, err
+	}
+	roleName, err := s.repository.BranchRoleName(ctx, actor.ProviderID, actor.UserID)
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		return BranchProfile{}, err
+	}
+	if strings.TrimSpace(roleName) == "" {
+		roleName = "Branch Administrator"
+	}
+	displayName := strings.TrimSpace(profile.DisplayName)
+	if displayName == "" {
+		displayName = owner.Name
+	}
+	documents := []BranchProfileDocument{
+		branchProfileDocument("identity", "Identity verification", "Compliance", profile.KTPObjectID != nil, profile.DocumentStatus, profile.UpdatedAt),
+		branchProfileDocument("nib", "Business registration (NIB)", "Registration", profile.NIBObjectID != nil, profile.DocumentStatus, profile.UpdatedAt),
+		branchProfileDocument("business", "Business verification", "Business", profile.BusinessObjectID != nil, profile.DocumentStatus, profile.UpdatedAt),
+	}
+	return BranchProfile{
+		Branch: branch,
+		Provider: BranchProfileProvider{
+			ID: profile.ID, DisplayName: displayName, Category: profile.Category, Status: profile.Status,
+			DocumentStatus: profile.DocumentStatus, CreatedAt: profile.CreatedAt, UpdatedAt: profile.UpdatedAt,
+		},
+		Account: account, Owner: owner, RoleName: roleName,
+		CompletionPercentage: branchProfileCompletion(branch), Documents: documents,
+	}, nil
+}
+
+func (s *Service) UpdateBranchProfile(ctx context.Context, actor Actor, input BranchProfileUpdateInput) (BranchProfile, error) {
+	if actor.Role != "provider" || actor.ProviderID <= 0 || actor.BranchID <= 0 || actor.UserID <= 0 || !HasPermission(actor, "profile") {
+		return BranchProfile{}, ErrForbidden
+	}
+	if err := input.Validate(); err != nil {
+		return BranchProfile{}, err
+	}
+	branch, err := s.ScopedBranch(ctx, actor, actor.BranchID)
+	if err != nil {
+		return BranchProfile{}, err
+	}
+	if _, err = s.repository.UpdateBranch(ctx, branch.ProviderID, branch.ID, input.branchInput()); err != nil {
+		return BranchProfile{}, err
+	}
+	return s.ResolveBranchProfile(ctx, actor)
+}
+
+func branchProfileDocument(id, name, category string, available bool, status string, updatedAt time.Time) BranchProfileDocument {
+	if !available {
+		status = "not_uploaded"
+	}
+	return BranchProfileDocument{ID: id, Name: name, Category: category, Status: status, Available: available, IsRestricted: true, UpdatedAt: updatedAt}
+}
+
+func branchProfileCompletion(branch Branch) int {
+	checks := []bool{
+		strings.TrimSpace(branch.Name) != "", strings.TrimSpace(branch.Description) != "",
+		branch.Email != nil && strings.TrimSpace(*branch.Email) != "",
+		branch.PhoneNumber != nil && strings.TrimSpace(*branch.PhoneNumber) != "",
+		branch.Address != nil && strings.TrimSpace(*branch.Address) != "",
+		branch.CountryID != nil && strings.TrimSpace(*branch.CountryID) != "",
+		branch.StateID != nil && strings.TrimSpace(*branch.StateID) != "",
+		branch.CityID != nil && strings.TrimSpace(*branch.CityID) != "",
+		branch.ZipCode != nil && strings.TrimSpace(*branch.ZipCode) != "",
+		strings.TrimSpace(branch.WorkingStartHour) != "", strings.TrimSpace(branch.WorkingEndHour) != "",
+		len(branch.WorkingDays) > 0, strings.TrimSpace(branch.BranchType) != "",
+		strings.TrimSpace(branch.Timezone) != "", branch.OpenedAt != nil && strings.TrimSpace(*branch.OpenedAt) != "",
+	}
+	completed := 0
+	for _, present := range checks {
+		if present {
+			completed++
+		}
+	}
+	return completed * 100 / len(checks)
+}
+
 func (s *Service) CreateBranch(ctx context.Context, actor Actor, input BranchInput) (Branch, error) {
 	if err := input.Validate(); err != nil {
 		return Branch{}, err

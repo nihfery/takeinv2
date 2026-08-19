@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/nihfery/takein/libs/go/domainmetrics"
@@ -169,6 +170,12 @@ type ProviderCreateRequest struct {
 	PaymentChannel string  `json:"payment_channel"`
 }
 
+type ProviderUpdateRequest struct {
+	CustomerName  string `json:"customer_name" binding:"max=255"`
+	CustomerPhone string `json:"customer_phone" binding:"max=30"`
+	Notes         string `json:"notes" binding:"max=2000"`
+}
+
 type ProviderListFilter struct {
 	ProviderID  int64
 	BranchID    *int64
@@ -240,6 +247,7 @@ type Repository interface {
 	AdminList(context.Context) ([]Booking, error)
 	AdminTransition(context.Context, int64, string) (Booking, error)
 	ProviderTransition(context.Context, int64, int64, *int64, string, *int64) (Booking, error)
+	ProviderUpdateDetails(context.Context, int64, int64, *int64, string, string, string) (Booking, error)
 	EligibleReviewStaff(context.Context, int64) ([]int64, error)
 	ApplyPaymentState(context.Context, PaymentStateInput) (Booking, bool, error)
 }
@@ -605,6 +613,33 @@ func (s *Service) ProviderTransition(ctx context.Context, providerID int64, bran
 		staffID = &selected
 	}
 	return s.repository.ProviderTransition(ctx, current.ID, providerID, branchScope, target, staffID)
+}
+
+func (s *Service) ProviderBooking(ctx context.Context, providerID int64, branchScope *int64, bookingID int64) (Booking, error) {
+	if providerID <= 0 || bookingID <= 0 {
+		return Booking{}, ErrForbidden
+	}
+	current, err := s.repository.ByID(ctx, bookingID)
+	if err != nil {
+		return Booking{}, err
+	}
+	if current.ProviderID != providerID || branchScope != nil && (current.BranchID == nil || *current.BranchID != *branchScope) {
+		return Booking{}, ErrForbidden
+	}
+	return current, nil
+}
+
+func (s *Service) UpdateProviderBooking(ctx context.Context, providerID int64, branchScope *int64, bookingID int64, request ProviderUpdateRequest) (Booking, error) {
+	if _, err := s.ProviderBooking(ctx, providerID, branchScope, bookingID); err != nil {
+		return Booking{}, err
+	}
+	name := strings.TrimSpace(request.CustomerName)
+	phone := strings.TrimSpace(request.CustomerPhone)
+	notes := strings.TrimSpace(request.Notes)
+	if len(name) > 255 || len(phone) > 30 || len(notes) > 2000 {
+		return Booking{}, ErrInvalidTransition
+	}
+	return s.repository.ProviderUpdateDetails(ctx, bookingID, providerID, branchScope, name, phone, notes)
 }
 
 func (s *Service) normalizeBookingDate(value string) (string, error) {

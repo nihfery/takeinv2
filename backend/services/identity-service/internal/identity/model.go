@@ -98,6 +98,6 @@ type Repository interface {
 	SetStatus(context.Context, int64, string) (User, error)
 	UpsertProviderBranchAccount(context.Context, ProviderBranchAccountInput, *string) (User, error)
 	CreateSession(context.Context, Session, SessionMetadata) error
-	RotateSession(context.Context, []byte, Session, SessionMetadata) (User, Session, error)
+	RotateSession(context.Context, []byte, string, Session, SessionMetadata) (User, Session, error)
 	RevokeSession(context.Context, []byte) error
 }

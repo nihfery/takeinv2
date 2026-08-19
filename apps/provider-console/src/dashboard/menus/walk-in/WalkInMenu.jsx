@@ -55,7 +55,7 @@ export default function WalkInMenu({ data, onCreated }) {
 
   const branchStaff = staff.filter((item) => !form.branch_id || String(item.branch_id) === String(form.branch_id));
   return (
-    <Card className="mx-auto max-w-4xl shadow-none">
+    <Card className="mx-auto max-w-4xl">
       <CardHeader><span className="mb-3 grid size-10 place-items-center rounded-xl bg-primary/10 text-primary"><UserRoundPlus className="size-5" /></span><CardTitle>Add a walk-in</CardTitle><CardDescription>Booking Service checks availability before creating the offline appointment.</CardDescription></CardHeader>
       <CardContent>
         <form className="grid gap-5" onSubmit={submit}>

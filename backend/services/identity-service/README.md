@@ -17,8 +17,8 @@ Apply `db/migrations` with Goose and regenerate `internal/persistence/postgres/s
 
 ## Interfaces and events
 
-- REST: `/api/auth/register/customer`, `/api/auth/register/provider`, login/me/logout, JWKS, and provider password change.
+- REST: `/api/auth/register/customer`, `/api/auth/register/provider`, role-bound login, `/api/auth/{customer|provider|admin}/me`, generic me/logout, JWKS, and provider password change. Login and refresh require the target portal role so a token cannot be issued or rotated through a different portal.
 - gRPC: `ValidateAccessToken`, `GetIdentity`, `UpdateIdentityProfile`, `SetAccountStatus`, and `UpsertProviderBranchAccount`.
 - Publishes `takein.identity.events.v1`; consumes provider/customer lifecycle events with inbox deduplication and DLQ.
 
-See [.env.example](.env.example). PostgreSQL failure makes the API unready; Redis-backed sensitive-route rate limits fail closed. Provider branch accounts receive branch/role/effective-permission claims and are disabled when their provider role is deactivated. Passwords, JWTs, refresh tokens, and key material must never be logged. Legacy bcrypt credentials are upgraded to Argon2id after successful authentication.
+See [.env.example](.env.example). PostgreSQL failure makes the API unready; Redis-backed sensitive-route rate limits fail closed. Customer, provider, and admin account scopes are constrained at the database layer. Provider branch accounts receive branch/role/effective-permission claims and are disabled when their provider role is deactivated. Passwords, JWTs, refresh tokens, and key material must never be logged. Legacy bcrypt credentials are upgraded to Argon2id after successful authentication.
